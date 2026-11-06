@@ -42,6 +42,13 @@ publish:
   provider: github
   owner: lifemy21rus
   repo: my_tasks
+
+# Автообновление через electron-updater.
+# Обновления берутся из GitHub-релиза последней версии.
+publish:
+  provider: github
+  owner: lifemy21rus
+  repo: my_tasks
   # Для приватного репозитория задайте переменную окружения GITHUB_TOKEN
   # с персональным токеном доступа (scope: repo) перед публикацией:
   #   $env:GH_TOKEN = "ghp_..."
