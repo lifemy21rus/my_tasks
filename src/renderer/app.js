@@ -1327,8 +1327,8 @@
       els.subtaskCounter.textContent = '0 из 0';
       return;
     }
-    const done = draft.subtasks.filter((sub) => sub.done && sub.title.trim()).length;
-    els.subtaskCounter.textContent = `${done} из ${draft.subtasks.filter((sub) => sub.title.trim()).length}`;
+    const done = (draft.subtasks || []).filter((sub) => sub.done && sub.title.trim()).length;
+    els.subtaskCounter.textContent = `${done} из ${(draft.subtasks || []).filter((sub) => sub.title.trim()).length}`;
   }
 
   function addDraftSubtask() {
