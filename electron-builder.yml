@@ -1,0 +1,48 @@
+appId: com.mytasks.app
+productName: Мои задачи
+copyright: MyTasks
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - src/**/*
+  - package.json
+  - "!**/*.map"
+
+asar: true
+compression: maximum
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  icon: build/icon.ico
+  artifactName: "MyTasks-${version}-${arch}.${ext}"
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Мои задачи
+  deleteAppDataOnUninstall: false
+  artifactName: "MyTasks-Setup-${version}.${ext}"
+
+portable:
+  artifactName: "MyTasks-${version}-portable.${ext}"
+
+# Автообновление через electron-updater.
+# Обновления берутся из GitHub-релиза последней версии.
+publish:
+  provider: github
+  owner: lifemy21rus
+  repo: my_tasks
+  # Для приватного репозитория задайте переменную окружения GITHUB_TOKEN
+  # с персональным токеном доступа (scope: repo) перед публикацией:
+  #   $env:GH_TOKEN = "ghp_..."
+  #   npx electron-builder publish --files dist\MyTasks-Setup-1.0.1.exe dist\MyTasks-1.0.1-portable.exe -p always

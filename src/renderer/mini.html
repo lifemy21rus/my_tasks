@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="system">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Мои задачи</title>
+  <link rel="stylesheet" href="mini.css" />
+</head>
+<body>
+  <div class="mini">
+    <header class="mini-head">
+      <div class="mini-brand">
+        <div class="mini-logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12.5l5 5L20 6.5" />
+          </svg>
+        </div>
+        <div class="mini-brand-text">
+          <span class="mini-title">Мои задачи</span>
+          <span class="mini-date" id="mini-date"></span>
+        </div>
+      </div>
+      <div class="mini-head-actions">
+        <button class="mini-icon-btn" id="mini-expand" type="button" title="Открыть полностью" aria-label="Открыть полностью">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M21 15v6h-6"/></svg>
+        </button>
+        <button class="mini-icon-btn" id="mini-hide" type="button" title="Скрыть панель" aria-label="Скрыть панель">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="mini-tabs" role="tablist" aria-label="Разделы панели">
+      <button class="mini-tab is-active" id="mini-tab-tasks" data-tab="tasks" role="tab" type="button" aria-selected="true">
+        <span class="mini-tab-label">Задачи</span>
+        <span class="mini-tab-count" id="mini-tab-tasks-count">0</span>
+      </button>
+      <button class="mini-tab" id="mini-tab-notes" data-tab="notes" role="tab" type="button" aria-selected="false">
+        <span class="mini-tab-label">Заметки</span>
+        <span class="mini-tab-count" id="mini-tab-notes-count">0</span>
+      </button>
+    </div>
+
+    <div class="mini-summary">
+      <span class="mini-count" id="mini-count">0 задач</span>
+      <span class="mini-overdue" id="mini-overdue" hidden></span>
+    </div>
+
+    <main class="mini-scroll" id="mini-scroll">
+      <div class="mini-list" id="mini-list" role="list"></div>
+      <div class="mini-list" id="mini-note-list" role="list" hidden></div>
+      <div class="mini-empty" id="mini-empty" hidden>
+        <div class="mini-empty-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5V12a8 8 0 1 1-4.7-7.3"/><path d="M20 5l-8 8-3-3"/></svg>
+        </div>
+        <div class="mini-empty-title" id="mini-empty-title">Все задачи выполнены</div>
+        <div class="mini-empty-text" id="mini-empty-text">Можно отдохнуть или добавить новую.</div>
+      </div>
+    </main>
+
+    <footer class="mini-foot">
+      <div class="mini-quick-add">
+        <input type="text" id="mini-quick-input" class="mini-quick-input" placeholder="Новая задача…" autocomplete="off" />
+        <button class="mini-quick-add-btn" id="mini-quick-add" type="button" title="Добавить задачу" aria-label="Добавить задачу">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+      <button class="mini-open-btn" id="mini-open" type="button" title="Открыть приложение" aria-label="Открыть приложение">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M21 15v6h-6"/></svg>
+      </button>
+    </footer>
+
+    <div class="mini-toast" id="mini-toast" hidden></div>
+  </div>
+
+  <script src="../shared/utils.js"></script>
+  <script src="mini.js"></script>
+</body>
+</html>
