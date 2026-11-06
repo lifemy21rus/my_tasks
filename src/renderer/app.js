@@ -172,23 +172,6 @@
       return;
     }
 
-    // Во «Входящих» показываем заметки вместе с задачами без срока
-    if (state.view === 'inbox') {
-      els.notesSectionHead.hidden = false;
-      els.notesSection.classList.remove('notes-section-full');
-      els.noteList.textContent = '';
-      if (notes.length === 0) {
-        els.notesSection.hidden = true;
-        return;
-      }
-      els.notesSection.hidden = false;
-      els.notesSectionCount.textContent = String(notes.length);
-      const fragment = document.createDocumentFragment();
-      for (const note of notes) fragment.appendChild(renderNoteCard(note));
-      els.noteList.appendChild(fragment);
-      return;
-    }
-
     if (state.view === 'notes') {
       els.notesSectionHead.hidden = true;
       els.notesSection.hidden = false;
@@ -502,24 +485,17 @@
   function computeCounts() {
     const now = new Date();
     const tasks = state.data.tasks;
-    const notes = state.data.notes;
-    const activeTasks = tasks.filter((task) => !task.done);
-    const activeNotes = notes.filter((note) => !note.done);
-    const doneTasks = tasks.filter((task) => task.done);
-    const doneNotes = notes.filter((note) => note.done);
-
+    const active = tasks.filter((task) => !task.done);
     return {
-      all: activeTasks.length,
-      inbox: state.filter === 'done'
-        ? doneTasks.filter((task) => !task.dueAt).length + doneNotes.length
-        : activeTasks.filter((task) => !task.dueAt).length + activeNotes.length,
-      today: activeTasks.filter((task) => dueMatchesView(task, 'today', now)).length,
-      tomorrow: activeTasks.filter((task) => dueMatchesView(task, 'tomorrow', now)).length,
-      overdue: activeTasks.filter((task) => dueMatchesView(task, 'overdue', now)).length,
-      soon: activeTasks.filter((task) => dueMatchesView(task, 'soon', now)).length,
-      done: doneTasks.length,
-      doneActualMinutes: doneTasks.reduce((sum, t) => sum + (t.actualMinutes || 0), 0),
-      notes: notes.length
+      all: active.length,
+      inbox: active.filter((task) => !task.dueAt).length,
+      today: active.filter((task) => dueMatchesView(task, 'today', now)).length,
+      tomorrow: active.filter((task) => dueMatchesView(task, 'tomorrow', now)).length,
+      overdue: active.filter((task) => dueMatchesView(task, 'overdue', now)).length,
+      soon: active.filter((task) => dueMatchesView(task, 'soon', now)).length,
+      done: tasks.filter((task) => task.done).length,
+      doneActualMinutes: tasks.filter((task) => task.done).reduce((sum, t) => sum + (t.actualMinutes || 0), 0),
+      notes: state.data.notes.length
     };
   }
 
@@ -696,16 +672,12 @@
     els.viewTitle.textContent = info.title;
 
     const isNotes = state.view === 'notes';
-    const isInbox = state.view === 'inbox';
     const hasSearch = Boolean(state.search.trim());
 
-    const visibleNotesCount = visibleNotes().length;
-    const totalCount = visible.length + visibleNotesCount;
-
-    let subtitle = isNotes ? noteCount(visibleNotesCount) : isInbox ? U.taskCount(totalCount) : U.taskCount(visible.length);
+    let subtitle = isNotes ? noteCount(visibleNotes().length) : U.taskCount(visible.length);
     if (hasSearch) {
-      const taskCount = isNotes ? visibleNotesCount : visible.length;
-      const noteCountFound = (state.view === 'all' || state.view === 'inbox') ? visibleNotesCount : 0;
+      const taskCount = isNotes ? visibleNotes().length : visible.length;
+      const noteCountFound = state.view === 'all' ? visibleNotes().length : 0;
       const total = taskCount + noteCountFound;
       subtitle = `Найдено: ${total}`;
     }
