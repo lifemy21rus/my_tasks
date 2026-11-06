@@ -474,8 +474,14 @@ function createWindow() {
 
   mainWindow.on('close', (event) => {
     if (isQuitting) return;
-    event.preventDefault();
-    hideMainToMini();
+    const settings = store ? store.getSettings() : {};
+    if (settings.quitOnClose) {
+      isQuitting = true;
+      app.quit();
+    } else {
+      event.preventDefault();
+      hideMainToMini();
+    }
   });
 
   mainWindow.on('minimize', (event) => {
@@ -786,6 +792,10 @@ app.whenReady().then(() => {
       store,
       notifications,
       autostart,
+      updater: {
+        check: () => autoUpdater.checkForUpdates(),
+        install: () => autoUpdater.quitAndInstall()
+      },
       hotkey: {
         apply: (hotkey, enabled) => registerHotkey(hotkey, enabled)
       },

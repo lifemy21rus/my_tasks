@@ -20,10 +20,10 @@ contextBridge.exposeInMainWorld('api', {
   deleteManyTasks: (ids) => ipcRenderer.invoke('task:delete-many', { ids }),
   toggleManyTasks: (ids, done) => ipcRenderer.invoke('task:toggle-many', { ids, done }),
 
-  addSubtask: (taskId, title) => ipcRenderer.invoke('subtask:add', { taskId, title }),
-  updateSubtask: (taskId, subtaskId, patch) => ipcRenderer.invoke('subtask:update', { taskId, subtaskId, patch }),
-  deleteSubtask: (taskId, subtaskId) => ipcRenderer.invoke('subtask:delete', { taskId, subtaskId }),
-  toggleSubtask: (taskId, subtaskId, done) => ipcRenderer.invoke('subtask:toggle', { taskId, subtaskId, done }),
+  addSubtask: (taskId, title, parentSubtaskId) => ipcRenderer.invoke('subtask:add', { taskId, title, parentSubtaskId }),
+  updateSubtask: (taskId, subtaskId, patch, parentSubtaskId) => ipcRenderer.invoke('subtask:update', { taskId, subtaskId, patch, parentSubtaskId }),
+  deleteSubtask: (taskId, subtaskId, parentSubtaskId) => ipcRenderer.invoke('subtask:delete', { taskId, subtaskId, parentSubtaskId }),
+  toggleSubtask: (taskId, subtaskId, done, parentSubtaskId) => ipcRenderer.invoke('subtask:toggle', { taskId, subtaskId, done, parentSubtaskId }),
 
   addCategory: (input) => ipcRenderer.invoke('category:add', input),
   updateCategory: (id, patch) => ipcRenderer.invoke('category:update', { id, patch }),
@@ -34,16 +34,30 @@ contextBridge.exposeInMainWorld('api', {
   deleteNote: (id) => ipcRenderer.invoke('note:delete', id),
   toggleNote: (id, done) => ipcRenderer.invoke('note:toggle', { id, done }),
 
+  getNoteTemplates: () => ipcRenderer.invoke('note-templates:get'),
+  addNoteTemplate: (input) => ipcRenderer.invoke('note-templates:add', input),
+  updateNoteTemplate: (id, patch) => ipcRenderer.invoke('note-templates:update', { id, patch }),
+  deleteNoteTemplate: (id) => ipcRenderer.invoke('note-templates:delete', id),
+
+  getTaskTemplates: () => ipcRenderer.invoke('task-templates:get'),
+  addTaskTemplate: (input) => ipcRenderer.invoke('task-templates:add', input),
+  updateTaskTemplate: (id, patch) => ipcRenderer.invoke('task-templates:update', { id, patch }),
+  deleteTaskTemplate: (id) => ipcRenderer.invoke('task-templates:delete', id),
+
   clearCompleted: () => ipcRenderer.invoke('tasks:clear-completed'),
   snoozeTask: (id, until) => ipcRenderer.invoke('task:snooze', { id, until }),
 
   updateSettings: (patch) => ipcRenderer.invoke('settings:update', patch),
 
   exportData: () => ipcRenderer.invoke('data:export'),
+  exportDataCsv: () => ipcRenderer.invoke('data:export-csv'),
   importData: () => ipcRenderer.invoke('data:import'),
   backupNow: () => ipcRenderer.invoke('data:backup'),
   openDataFolder: () => ipcRenderer.invoke('data:open-folder'),
   testNotification: () => ipcRenderer.invoke('notification:test'),
+
+  checkForUpdates: () => ipcRenderer.invoke('app:check-for-updates'),
+  installUpdate: () => ipcRenderer.invoke('app:install-update'),
 
   expand: (taskId) => ipcRenderer.invoke('window:expand', { taskId: taskId || null }),
   newTask: () => ipcRenderer.invoke('window:new-task'),

@@ -19,7 +19,10 @@
     confirmReturn: null,
     lastFocusedTask: null,
     priorityFilter: '',
-    reminderEditor: []
+    reminderEditor: [],
+    taskColor: null,
+    noteTemplates: [],
+    taskTemplates: []
   };
 
   const $ = (id) => document.getElementById(id);
@@ -56,10 +59,15 @@
     taskTimeInput: $('task-time-input'),
     taskPriorityInput: $('task-priority-input'),
     taskCategoryInput: $('task-category-input'),
+    taskEstimatedMinutes: $('task-estimated-minutes'),
+    taskActualMinutes: $('task-actual-minutes'),
+    taskTemplateSelect: $('task-template-select'),
+    taskSaveAsTemplateBtn: $('task-save-as-template-btn'),
     clearDueBtn: $('clear-due-btn'),
     quickDue: $('quick-due'),
     reminderList: $('reminder-list'),
     addReminderBtn: $('add-reminder-btn'),
+    taskColorGrid: $('task-color-grid'),
     recurrenceTypeRadios: $$('input[name="recurrence-type"]'),
     recurrenceOptions: $('recurrence-options'),
     recurrenceInterval: $('recurrence-interval'),
@@ -84,6 +92,7 @@
     noteModalTitle: $('note-modal-title'),
     noteTitleInput: $('note-title-input'),
     noteContentInput: $('note-content-input'),
+    noteTemplateSelect: $('note-template-select'),
     noteTitleError: $('note-title-error'),
     noteColorPicker: $('note-color-picker'),
     noteSaveBtn: $('note-save-btn'),
@@ -111,6 +120,8 @@
     settingsModalClose: $('settings-modal-close'),
     settingAutostart: $('setting-autostart'),
     settingStartMinimized: $('setting-start-minimized'),
+    settingMiniPanel: $('setting-mini-panel'),
+    settingQuitOnClose: $('setting-quit-on-close'),
     settingDefaultRemind: $('setting-default-remind'),
     settingRemindAtDue: $('setting-remind-at-due'),
     settingHotkeyEnabled: $('setting-hotkey-enabled'),
@@ -120,11 +131,15 @@
     themeGrid: $('theme-grid'),
     testNotificationBtn: $('test-notification-btn'),
     exportBtn: $('export-btn'),
+    exportCsvBtn: $('export-csv-btn'),
     importBtn: $('import-btn'),
     backupBtn: $('backup-btn'),
     openFolderBtn: $('open-folder-btn'),
     dataDirLabel: $('data-dir-label'),
     versionLabel: $('version-label'),
+    checkUpdatesBtn: $('check-updates-btn'),
+    installUpdateBtn: $('install-update-btn'),
+    updateStatusNote: $('update-status-note'),
     toastStack: $('toast-stack')
   };
 
@@ -148,9 +163,10 @@
 
   function renderNotes() {
     const notes = visibleNotes();
+    const hasSearch = Boolean(state.search.trim());
 
-    // В разделе «Все задачи» показываем только задачи, заметки скрыты
-    if (state.view === 'all') {
+    // В разделе «Все задачи» заметки показываются только при активном поиске
+    if (state.view === 'all' && !hasSearch) {
       els.notesSection.hidden = true;
       return;
     }
@@ -201,6 +217,36 @@
     }
   }
 
+  async function renderNoteTemplates() {
+    const res = await invoke(api.getNoteTemplates());
+    if (!res) return;
+    const templates = res.result || [];
+    state.noteTemplates = templates;
+    els.noteTemplateSelect.textContent = '<option value="">Без шаблона</option>';
+    for (const template of templates) {
+      const option = document.createElement('option');
+      option.value = template.id;
+      option.textContent = template.title;
+      els.noteTemplateSelect.appendChild(option);
+    }
+    els.noteTemplateSelect.value = '';
+  }
+
+  async function renderTaskTemplates() {
+    const res = await invoke(api.getTaskTemplates());
+    if (!res) return;
+    const templates = res.result || [];
+    state.taskTemplates = templates;
+    els.taskTemplateSelect.textContent = '<option value="">Без шаблона</option>';
+    for (const template of templates) {
+      const option = document.createElement('option');
+      option.value = template.id;
+      option.textContent = template.title;
+      els.taskTemplateSelect.appendChild(option);
+    }
+    els.taskTemplateSelect.value = '';
+  }
+
   function openNoteModal(noteId = null) {
     const note = noteId ? state.data.notes.find((n) => n.id === noteId) : null;
     editingNoteId = note ? note.id : null;
@@ -212,6 +258,7 @@
     els.noteTitleError.hidden = true;
     els.noteDeleteBtn.hidden = !note;
     renderNoteColors();
+    renderNoteTemplates();
 
     els.modalBackdrop.hidden = false;
     els.noteModal.hidden = false;
@@ -351,6 +398,7 @@
   /* ------------------------------ filtering ------------------------------ */
 
   function dueMatchesView(task, view, now) {
+    if (view === 'inbox') return !task.dueAt;
     if (!task.dueAt) return false;
     const due = Date.parse(task.dueAt);
     if (!Number.isFinite(due)) return false;
@@ -372,6 +420,10 @@
       list = list.filter((task) => task.done);
     } else if (state.view === 'category') {
       list = list.filter((task) => task.categoryId === state.categoryId);
+      if (state.filter === 'active') list = list.filter((task) => !task.done);
+      else if (state.filter === 'done') list = list.filter((task) => task.done);
+    } else if (state.view === 'inbox') {
+      list = list.filter((task) => !task.dueAt);
       if (state.filter === 'active') list = list.filter((task) => !task.done);
       else if (state.filter === 'done') list = list.filter((task) => task.done);
     } else {
@@ -435,11 +487,13 @@
     const active = tasks.filter((task) => !task.done);
     return {
       all: active.length,
+      inbox: active.filter((task) => !task.dueAt).length,
       today: active.filter((task) => dueMatchesView(task, 'today', now)).length,
       tomorrow: active.filter((task) => dueMatchesView(task, 'tomorrow', now)).length,
       overdue: active.filter((task) => dueMatchesView(task, 'overdue', now)).length,
       soon: active.filter((task) => dueMatchesView(task, 'soon', now)).length,
       done: tasks.filter((task) => task.done).length,
+      doneActualMinutes: tasks.filter((task) => task.done).reduce((sum, t) => sum + (t.actualMinutes || 0), 0),
       notes: state.data.notes.length
     };
   }
@@ -599,6 +653,7 @@
     }
     const map = {
       all: ['Все задачи', ''],
+      inbox: ['Входящие', ''],
       today: ['Сегодня', ''],
       tomorrow: ['Завтра', ''],
       overdue: ['Просроченные', ''],
@@ -616,14 +671,24 @@
     els.viewTitle.textContent = info.title;
 
     const isNotes = state.view === 'notes';
+    const hasSearch = Boolean(state.search.trim());
     let subtitle = isNotes ? noteCount(visibleNotes().length) : U.taskCount(visible.length);
-    if (state.search.trim()) {
-      subtitle = `Найдено: ${isNotes ? visibleNotes().length : visible.length}`;
+    if (hasSearch) {
+      const taskCount = state.view === 'notes' ? visibleNotes().length : visible.length;
+      const noteCountFound = state.view === 'all' ? visibleNotes().length : 0;
+      const total = taskCount + noteCountFound;
+      subtitle = `Найдено: ${total}`;
     }
     els.viewSub.textContent = subtitle;
 
     const doneCount = state.data.tasks.filter((task) => task.done).length;
     els.clearCompletedBtn.hidden = doneCount === 0 || isNotes;
+
+    // Фильтр по приоритету относится только к задачам, у заметок его нет
+    const prioritySection = els.priorityFilters.closest('.sidebar-section');
+    if (prioritySection) {
+      prioritySection.hidden = isNotes;
+    }
 
     els.searchInput.value = state.search;
     els.searchInput.placeholder = isNotes ? 'Поиск заметок…' : 'Поиск задач и заметок…';
@@ -766,6 +831,15 @@
       titleRow.appendChild(flag);
     }
 
+    if (task.color) {
+      const colorDot = document.createElement('span');
+      colorDot.className = 'task-color-dot';
+      colorDot.style.background = task.color;
+      colorDot.title = 'Цвет задачи';
+      colorDot.setAttribute('aria-label', 'Цвет задачи');
+      titleRow.appendChild(colorDot);
+    }
+
     body.appendChild(titleRow);
 
     if (task.description) {
@@ -803,6 +877,16 @@
       label.textContent = category.name;
       cat.append(dot, label);
       meta.appendChild(cat);
+    }
+
+    if (task.estimatedMinutes || task.actualMinutes) {
+      const timeChip = document.createElement('span');
+      timeChip.className = 'meta-time';
+      const est = task.estimatedMinutes ? `план ${task.estimatedMinutes} мин` : '';
+      const act = task.actualMinutes ? `факт ${task.actualMinutes} мин` : '';
+      timeChip.textContent = [est, act].filter(Boolean).join(' · ');
+      timeChip.title = 'Время задачи';
+      meta.appendChild(timeChip);
     }
 
     const subs = task.subtasks || [];
@@ -864,9 +948,10 @@
     return button;
   }
 
-  function renderSubtasksPanel(task) {
+  function renderSubtasksPanel(task, depth = 0) {
     const panel = document.createElement('div');
     panel.className = 'subtasks-panel';
+    panel.style.paddingLeft = `${depth * 20}px`;
 
     const subs = task.subtasks || [];
     if (subs.length === 0) {
@@ -886,6 +971,7 @@
       check.checked = subtask.done;
       check.dataset.action = 'toggle-subtask';
       check.dataset.subtaskId = subtask.id;
+      check.dataset.parentSubtaskId = task.id;
       check.title = subtask.done ? 'Снять отметку' : 'Отметить выполненной';
       check.setAttribute('aria-label', `Подзадача ${subtask.title}`);
 
@@ -898,17 +984,31 @@
 
       const edit = makeIconButton('edit-subtask', 'Переименовать', 'pencil');
       edit.dataset.subtaskId = subtask.id;
+      edit.dataset.parentSubtaskId = task.id;
       const remove = makeIconButton('delete-subtask', 'Удалить подзадачу', 'trash', 'danger');
       remove.dataset.subtaskId = subtask.id;
-      rowActions.append(edit, remove);
+      remove.dataset.parentSubtaskId = task.id;
+
+      const addSub = makeIconButton('add-sub-subtask', 'Добавить подзадачу', 'plus');
+      addSub.dataset.subtaskId = subtask.id;
+      addSub.dataset.parentSubtaskId = task.id;
+      addSub.classList.add('small');
+
+      rowActions.append(edit, addSub, remove);
 
       row.append(check, title, rowActions);
       panel.appendChild(row);
+
+      // Рекурсивно рендерим вложенные подзадачи
+      if (subtask.subtasks && subtask.subtasks.length > 0) {
+        panel.appendChild(renderSubtasksPanel(subtask, depth + 1));
+      }
     }
 
     const form = document.createElement('form');
     form.className = 'subtask-form';
     form.dataset.form = 'add-subtask';
+    form.dataset.parentSubtaskId = task.id;
 
     const input = document.createElement('input');
     input.type = 'text';
@@ -955,6 +1055,11 @@
       text += ` · ${noteCount(notesCount)}`;
     }
     els.statusLeft.textContent = text;
+
+    const counts = computeCounts();
+    if (counts.doneActualMinutes > 0) {
+      els.statusLeft.textContent += ` · Затрачено: ${counts.doneActualMinutes} мин`;
+    }
   }
 
   /* -------------------------------- views -------------------------------- */
@@ -967,6 +1072,7 @@
     } else {
       state.view = view;
       state.categoryId = null;
+      if (view === 'notes') state.priorityFilter = '';
       if (view === 'done') state.filter = 'all';
       else if (state.filter === 'done') state.filter = 'active';
     }
@@ -990,7 +1096,10 @@
         dueDate: split.date,
         dueTime: task.dueAt ? split.time : '',
         priority: task.priority,
+        color: task.color || null,
         categoryId: task.categoryId || '',
+        estimatedMinutes: task.estimatedMinutes || null,
+        actualMinutes: task.actualMinutes || null,
         reminders: task.reminders ? task.reminders.map((r) => ({ offset: r.offset, type: r.type })) : null,
         recurrence: task.recurrence ? { ...task.recurrence } : null,
         subtasks: (task.subtasks || []).map((sub) => ({ id: sub.id, title: sub.title, done: sub.done }))
@@ -1011,6 +1120,9 @@
         dueDate: date,
         dueTime: date ? '18:00' : '',
         priority: 'normal',
+        color: null,
+        estimatedMinutes: null,
+        actualMinutes: null,
         categoryId: preset.categoryId || (state.view === 'category' ? state.categoryId : ''),
         reminders: settings.defaultRemindAtDue !== false ? defaultReminders : null,
         recurrence: null,
@@ -1025,6 +1137,8 @@
     els.taskDateInput.value = state.draft.dueDate;
     els.taskTimeInput.value = state.draft.dueTime || '18:00';
     els.taskPriorityInput.value = state.draft.priority;
+    els.taskEstimatedMinutes.value = state.draft.estimatedMinutes ?? '';
+    els.taskActualMinutes.value = state.draft.actualMinutes ?? '';
     loadReminderEditor(state.draft.id ? currentTask(state.draft.id) : state.draft);
     loadRecurrenceEditor(state.draft.id ? currentTask(state.draft.id) : state.draft);
     els.taskTitleError.hidden = true;
@@ -1032,6 +1146,10 @@
     renderCategoryOptions();
     renderDraftSubtasks();
     updateSubtaskCounter();
+
+    state.taskColor = state.draft.color || null;
+    renderTaskColorGrid();
+    renderTaskTemplates();
 
     els.modalBackdrop.hidden = false;
     els.taskModal.hidden = false;
@@ -1056,6 +1174,25 @@
       select.appendChild(option);
     }
     select.value = state.draft ? state.draft.categoryId : '';
+  }
+
+  function renderTaskColorGrid() {
+    const TASK_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6'];
+    els.taskColorGrid.textContent = '';
+    for (const color of TASK_COLORS) {
+      const swatch = document.createElement('button');
+      swatch.type = 'button';
+      swatch.className = `color-swatch${state.taskColor === color ? ' is-active' : ''}`;
+      swatch.style.background = color;
+      swatch.dataset.color = color;
+      swatch.title = color;
+      swatch.setAttribute('aria-label', `Цвет ${color}`);
+      swatch.addEventListener('click', () => {
+        state.taskColor = color;
+        renderTaskColorGrid();
+      });
+      els.taskColorGrid.appendChild(swatch);
+    }
   }
 
   function renderDraftSubtasks() {
@@ -1150,6 +1287,9 @@
       description: els.taskDescInput.value,
       dueAt,
       priority: els.taskPriorityInput.value,
+      color: state.taskColor || undefined,
+      estimatedMinutes: Number(els.taskEstimatedMinutes.value) || undefined,
+      actualMinutes: Number(els.taskActualMinutes.value) || undefined,
       categoryId: els.taskCategoryInput.value || null,
       reminders: state.reminderEditor.length > 0 ? [...state.reminderEditor] : null,
       recurrence: buildRecurrenceFromEditor()
@@ -1161,7 +1301,14 @@
       if (!draft.id) {
         const subtasks = draft.subtasks
           .filter((sub) => sub.title.trim())
-          .map((sub) => ({ title: sub.title, done: sub.done }));
+          .map((sub) => ({
+            title: sub.title.trim(),
+            done: Boolean(sub.done),
+            subtasks: Array.isArray(sub.subtasks) ? sub.subtasks.filter((s) => s.title.trim()).map((s) => ({
+              title: s.title.trim(),
+              done: Boolean(s.done)
+            })) : []
+          }));
         const res = await invoke(api.addTask({ ...patch, subtasks }), 'Задача добавлена');
         if (!res) return;
         closeTaskModal();
@@ -1336,6 +1483,8 @@
 
     els.settingAutostart.checked = Boolean(settings.autostart);
     els.settingStartMinimized.checked = Boolean(settings.startMinimized);
+    els.settingMiniPanel.checked = Boolean(settings.miniPanel);
+    els.settingQuitOnClose.checked = Boolean(settings.quitOnClose);
     els.settingDefaultRemind.value = String(settings.defaultRemindBefore);
     els.settingRemindAtDue.checked = Boolean(settings.defaultRemindAtDue);
     els.settingHotkeyEnabled.checked = Boolean(settings.hotkeyEnabled);
@@ -1347,6 +1496,9 @@
 
     els.dataDirLabel.textContent = state.runtime.dataDir || '%APPDATA%\\Мои задачи';
     els.versionLabel.textContent = state.runtime.version ? `Версия ${state.runtime.version}.` : '';
+    els.checkUpdatesBtn.hidden = false;
+    els.installUpdateBtn.hidden = true;
+    els.updateStatusNote.hidden = true;
   }
 
   async function updateSetting(patch, message) {
@@ -1749,7 +1901,7 @@
         if (card) toggleTask(card.dataset.id, target.checked);
       } else if (target.dataset.action === 'toggle-subtask') {
         const card = target.closest('.task-card');
-        if (card) toggleSubtask(card.dataset.id, target.dataset.subtaskId, target.checked);
+        if (card) toggleSubtask(card.dataset.id, target.dataset.subtaskId, target.checked, target.dataset.parentSubtaskId || null);
       }
     });
 
@@ -1770,9 +1922,50 @@
           else state.expanded.add(taskId);
           renderTaskList();
         } else if (action === 'edit-subtask') {
-          startInlineSubtaskEdit(card, button.dataset.subtaskId);
+          startInlineSubtaskEdit(card, button.dataset.subtaskId, button.dataset.parentSubtaskId || null);
         } else if (action === 'delete-subtask') {
-          deleteSubtask(taskId, button.dataset.subtaskId);
+          deleteSubtask(taskId, button.dataset.subtaskId, button.dataset.parentSubtaskId || null);
+        } else if (action === 'add-sub-subtask') {
+          const parentSubtaskId = button.dataset.subtaskId;
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.placeholder = 'Новая подзадача…';
+          input.maxLength = 500;
+          input.autocomplete = 'off';
+          button.replaceWith(input);
+          input.focus();
+          input.addEventListener('blur', () => {
+            if (input.value.trim()) {
+              invoke(api.addSubtask(card.dataset.id, input.value.trim(), parentSubtaskId), 'Подзадача добавлена');
+            }
+            button = makeIconButton('add-sub-subtask', 'Добавить подзадачу', 'plus');
+            button.dataset.subtaskId = parentSubtaskId;
+            button.dataset.parentSubtaskId = card.dataset.id;
+            button.classList.add('small');
+            input.replaceWith(button);
+            button.addEventListener('click', (e) => {
+              // handled by delegation
+            });
+          });
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (input.value.trim()) {
+                invoke(api.addSubtask(card.dataset.id, input.value.trim(), parentSubtaskId), 'Подзадача добавлена');
+              }
+              const newBtn = makeIconButton('add-sub-subtask', 'Добавить подзадачу', 'plus');
+              newBtn.dataset.subtaskId = parentSubtaskId;
+              newBtn.dataset.parentSubtaskId = card.dataset.id;
+              newBtn.classList.add('small');
+              input.replaceWith(newBtn);
+            } else if (e.key === 'Escape') {
+              const newBtn = makeIconButton('add-sub-subtask', 'Добавить подзадачу', 'plus');
+              newBtn.dataset.subtaskId = parentSubtaskId;
+              newBtn.dataset.parentSubtaskId = card.dataset.id;
+              newBtn.classList.add('small');
+              input.replaceWith(newBtn);
+            }
+          });
         }
         return;
       }
@@ -1801,7 +1994,7 @@
       const input = form.querySelector('input');
       const value = input.value.trim();
       if (!card || !value) return;
-      invoke(api.addSubtask(card.dataset.id, value), 'Подзадача добавлена');
+      invoke(api.addSubtask(card.dataset.id, value, form.dataset.parentSubtaskId || null), 'Подзадача добавлена');
     });
 
     // task modal
@@ -1810,6 +2003,36 @@
     els.taskSaveBtn.addEventListener('click', saveTask);
     els.taskDeleteBtn.addEventListener('click', () => {
       if (state.draft && state.draft.id) deleteTaskWithConfirm(state.draft.id);
+    });
+
+    els.taskSaveAsTemplateBtn.addEventListener('click', async () => {
+      if (!state.draft) return;
+      const title = els.taskTitleInput.value.trim();
+      if (!title) {
+        els.taskTitleError.textContent = 'Введите название задачи';
+        els.taskTitleError.hidden = false;
+        els.taskTitleInput.focus();
+        return;
+      }
+      const patch = {
+        title,
+        description: els.taskDescInput.value,
+        priority: els.taskPriorityInput.value,
+        categoryId: els.taskCategoryInput.value || null,
+        color: state.taskColor || undefined,
+        estimatedMinutes: Number(els.taskEstimatedMinutes.value) || undefined,
+        actualMinutes: Number(els.taskActualMinutes.value) || undefined,
+        reminders: state.reminderEditor.length > 0 ? [...state.reminderEditor] : null,
+        recurrence: buildRecurrenceFromEditor(),
+        subtasks: state.draft.subtasks
+          .filter((sub) => sub.title.trim())
+          .map((sub) => ({ title: sub.title.trim(), done: sub.done }))
+      };
+      const res = await invoke(api.addTaskTemplate(patch), 'Шаблон задачи сохранён');
+      if (res) {
+        renderTaskTemplates();
+        toast('Шаблон задачи сохранён', 'success');
+      }
     });
 
     els.taskTitleInput.addEventListener('keydown', (event) => {
@@ -1840,6 +2063,47 @@
         event.preventDefault();
         saveNote();
       }
+    });
+
+    els.noteTemplateSelect.addEventListener('change', () => {
+      const templateId = els.noteTemplateSelect.value;
+      if (!templateId) return;
+      const template = (state.data.templates || []).find((t) => t.id === templateId);
+      if (template) {
+        els.noteTitleInput.value = template.title;
+        els.noteContentInput.value = template.content || '';
+      }
+    });
+
+    els.taskTemplateSelect.addEventListener('change', () => {
+      const templateId = els.taskTemplateSelect.value;
+      if (!templateId || !state.draft) return;
+      const template = (state.taskTemplates || []).find((t) => t.id === templateId);
+      if (!template) return;
+      state.draft.title = template.title || '';
+      state.draft.description = template.description || '';
+      state.draft.priority = template.priority || 'normal';
+      state.draft.color = template.color || null;
+      state.draft.categoryId = template.categoryId || '';
+      state.draft.estimatedMinutes = template.estimatedMinutes || null;
+      state.draft.reminders = template.reminders ? template.reminders.map((r) => ({ offset: r.offset, type: r.type })) : null;
+      state.draft.recurrence = template.recurrence ? { ...template.recurrence } : null;
+      state.draft.subtasks = (template.subtasks || []).map((sub) => ({
+        id: null,
+        title: sub.title,
+        done: false
+      }));
+
+      els.taskTitleInput.value = state.draft.title;
+      els.taskDescInput.value = state.draft.description;
+      els.taskPriorityInput.value = state.draft.priority;
+      els.taskEstimatedMinutes.value = state.draft.estimatedMinutes ?? '';
+      state.taskColor = state.draft.color || null;
+      renderTaskColorGrid();
+      renderDraftSubtasks();
+      updateSubtaskCounter();
+      loadReminderEditor(state.draft);
+      loadRecurrenceEditor(state.draft);
     });
 
     els.quickDue.addEventListener('click', (event) => {
@@ -1888,11 +2152,24 @@
       updateSetting({ theme: button.dataset.theme });
     });
 
+    els.taskColorGrid.addEventListener('click', (event) => {
+      const button = event.target.closest('.color-swatch');
+      if (!button) return;
+      state.taskColor = button.dataset.color || null;
+      renderTaskColorGrid();
+    });
+
     els.settingAutostart.addEventListener('change', () => {
       updateSetting({ autostart: els.settingAutostart.checked });
     });
     els.settingStartMinimized.addEventListener('change', () => {
       updateSetting({ startMinimized: els.settingStartMinimized.checked });
+    });
+    els.settingMiniPanel.addEventListener('change', () => {
+      updateSetting({ miniPanel: els.settingMiniPanel.checked });
+    });
+    els.settingQuitOnClose.addEventListener('change', () => {
+      updateSetting({ quitOnClose: els.settingQuitOnClose.checked });
     });
     els.settingDefaultRemind.addEventListener('change', () => {
       updateSetting({ defaultRemindBefore: Number(els.settingDefaultRemind.value) });
@@ -1920,6 +2197,11 @@
       if (res && res.result && res.result.path) toast('Данные экспортированы', 'success');
     });
 
+    els.exportCsvBtn.addEventListener('click', async () => {
+      const res = await invoke(api.exportDataCsv());
+      if (res && res.result && res.result.path) toast('Задачи экспортированы в CSV', 'success');
+    });
+
     els.importBtn.addEventListener('click', async () => {
       const confirmed = await confirmDialog({
         title: 'Импортировать данные?',
@@ -1942,6 +2224,31 @@
     els.openFolderBtn.addEventListener('click', async () => {
       const res = await invoke(api.openDataFolder());
       if (res) toast('Папка с данными открыта', 'success');
+    });
+
+    els.checkUpdatesBtn.addEventListener('click', async () => {
+      els.checkUpdatesBtn.hidden = true;
+      els.installUpdateBtn.hidden = true;
+      els.updateStatusNote.hidden = true;
+      els.updateStatusNote.textContent = 'Проверка обновлений…';
+      els.updateStatusNote.hidden = false;
+      try {
+        const res = await invoke(api.checkForUpdates());
+        if (res && res.result && res.result.checking) {
+          els.updateStatusNote.textContent = 'Проверка завершена. Обновлений не найдено.';
+          els.updateStatusNote.hidden = false;
+          setTimeout(() => { els.updateStatusNote.hidden = true; els.checkUpdatesBtn.hidden = false; }, 3000);
+        }
+      } catch (err) {
+        els.updateStatusNote.textContent = 'Ошибка проверки обновлений.';
+        els.updateStatusNote.hidden = false;
+        setTimeout(() => { els.updateStatusNote.hidden = true; els.checkUpdatesBtn.hidden = false; }, 3000);
+      }
+    });
+
+    els.installUpdateBtn.addEventListener('click', async () => {
+      await invoke(api.installUpdate());
+      toast('Обновление будет установлено после перезапуска приложения', 'success');
     });
 
     // confirm modal
@@ -2063,15 +2370,19 @@
 
     if (api.onUpdateAvailable) {
       api.onUpdateAvailable((payload) => {
-        toast(`Доступно обновление ${payload.version}. Оно будет установлено при перезапуске приложения.`);
+        els.installUpdateBtn.hidden = false;
+        els.checkUpdatesBtn.hidden = true;
+        els.updateStatusNote.textContent = `Доступна версия ${payload.version}. Нажмите «Установить обновление».`;
+        els.updateStatusNote.hidden = false;
+        toast(`Доступно обновление ${payload.version}`, 'success');
       });
     }
   }
 
-  function startInlineSubtaskEdit(card, subtaskId) {
+  function startInlineSubtaskEdit(card, subtaskId, parentSubtaskId = null) {
     const task = currentTask(card.dataset.id);
     if (!task) return;
-    const subtask = (task.subtasks || []).find((sub) => sub.id === subtaskId);
+    const subtask = findSubtaskInTask(task, subtaskId);
     if (!subtask) return;
 
     const row = card.querySelector(`[data-action="toggle-subtask"][data-subtask-id="${subtaskId}"]`);
@@ -2095,7 +2406,7 @@
     const finish = async (save) => {
       const value = input.value.trim();
       if (save && value && value !== subtask.title) {
-        await invoke(api.updateSubtask(card.dataset.id, subtaskId, { title: value }), 'Подзадача обновлена');
+        await invoke(api.updateSubtask(card.dataset.id, subtaskId, { title: value }, parentSubtaskId), 'Подзадача обновлена');
       } else {
         renderTaskList();
       }
@@ -2111,6 +2422,17 @@
       }
     });
     input.addEventListener('blur', () => finish(true));
+  }
+
+  function findSubtaskInTask(task, subtaskId) {
+    for (const sub of task.subtasks || []) {
+      if (sub.id === subtaskId) return sub;
+      if (sub.subtasks) {
+        const found = findSubtaskInTask(sub, subtaskId);
+        if (found) return found;
+      }
+    }
+    return null;
   }
 
   /* --------------------------------- init --------------------------------- */

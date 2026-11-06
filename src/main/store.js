@@ -154,6 +154,13 @@ function normalizeReminderOffset(value) {
   return null;
 }
 
+function normalizeMinutes(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  if (Number.isFinite(n) && n >= 0 && n <= 999999) return Math.round(n);
+  return null;
+}
+
 function normalizeSettings(raw, isPackaged) {
   const source = raw && typeof raw === 'object' ? raw : {};
   const theme = utils.THEMES.includes(source.theme) ? source.theme : 'system';
@@ -169,7 +176,8 @@ function normalizeSettings(raw, isPackaged) {
     hotkey,
     hotkeyEnabled: typeof source.hotkeyEnabled === 'boolean' ? source.hotkeyEnabled : true,
     miniPanel: typeof source.miniPanel === 'boolean' ? source.miniPanel : true,
-    miniX: typeof source.miniX === 'number' && Number.isFinite(source.miniX) ? source.miniX : null
+    miniX: typeof source.miniX === 'number' && Number.isFinite(source.miniX) ? source.miniX : null,
+    quitOnClose: typeof source.quitOnClose === 'boolean' ? source.quitOnClose : false
   };
 }
 
@@ -179,7 +187,9 @@ function defaultData(isPackaged) {
     settings: normalizeSettings({}, isPackaged),
     categories: [],
     tasks: [],
-    notes: []
+    notes: [],
+    templates: [],
+    taskTemplates: []
   };
 }
 
@@ -191,7 +201,10 @@ function normalizeSubtask(raw) {
     id: typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 100) : uid(),
     title,
     done: Boolean(raw.done),
-    createdAt: normalizeDate(raw.createdAt) || nowIso()
+    createdAt: normalizeDate(raw.createdAt) || nowIso(),
+    subtasks: Array.isArray(raw.subtasks)
+      ? raw.subtasks.map(normalizeSubtask).filter(Boolean)
+      : []
   };
 }
 
@@ -209,6 +222,37 @@ function normalizeNote(raw) {
     categoryId: raw.categoryId || null,
     createdAt,
     updatedAt: normalizeDate(raw.updatedAt) || createdAt
+  };
+}
+
+function normalizeTemplate(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const title = normalizeTitle(raw.title);
+  if (!title) return null;
+  return {
+    id: typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 100) : uid(),
+    title,
+    content: normalizeNoteContent(raw.content)
+  };
+}
+
+function normalizeTaskTemplate(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const title = normalizeTitle(raw.title);
+  if (!title) return null;
+  return {
+    id: typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 100) : uid(),
+    title,
+    description: normalizeDescription(raw.description),
+    priority: normalizePriority(raw.priority),
+    categoryId: raw.categoryId || null,
+    color: raw.color ? normalizeColor(raw.color) : null,
+    estimatedMinutes: normalizeMinutes(raw.estimatedMinutes),
+    reminders: normalizeReminders(raw.reminders) || null,
+    recurrence: normalizeRecurrence(raw.recurrence) || null,
+    subtasks: Array.isArray(raw.subtasks)
+      ? raw.subtasks.map((sub) => normalizeSubtask({ ...sub, done: false })).filter(Boolean)
+      : []
   };
 }
 
@@ -241,6 +285,7 @@ function normalizeTask(raw, validCategoryIds) {
     description: normalizeDescription(raw.description),
     dueAt,
     priority: normalizePriority(raw.priority),
+    color: normalizeColor(raw.color),
     categoryId: validCategoryIds && validCategoryIds.has(raw.categoryId) ? raw.categoryId : null,
     done,
     completedAt: done ? (normalizeDate(raw.completedAt) || nowIso()) : null,
@@ -253,6 +298,8 @@ function normalizeTask(raw, validCategoryIds) {
     notifiedBeforeAt: normalizeDate(raw.notifiedBeforeAt),
     notifiedDueAt: normalizeDate(raw.notifiedDueAt),
     snoozedUntil: normalizeDate(raw.snoozedUntil),
+    estimatedMinutes: normalizeMinutes(raw.estimatedMinutes),
+    actualMinutes: normalizeMinutes(raw.actualMinutes),
     subtasks
   };
 
@@ -270,6 +317,13 @@ function normalizeTask(raw, validCategoryIds) {
 }
 
 function ensureTaskInvariant(task) {
+  // Рекурсивно нормализуем вложенные подзадачи 먼저
+  if (Array.isArray(task.subtasks)) {
+    for (const subtask of task.subtasks) {
+      ensureTaskInvariant(subtask);
+    }
+  }
+
   if (!task.subtasks || task.subtasks.length === 0) {
     if (!task.done) task.completedAt = null;
     else if (!task.completedAt) task.completedAt = nowIso();
@@ -476,6 +530,9 @@ class Store extends EventEmitter {
       const value = patch.miniX;
       next.miniX = (value === null || value === undefined) ? null : (Number.isFinite(Number(value)) ? Number(value) : next.miniX);
     }
+    if (Object.prototype.hasOwnProperty.call(patch, 'quitOnClose')) {
+      next.quitOnClose = Boolean(patch.quitOnClose);
+    }
 
     this.data.settings = next;
     this.save();
@@ -497,6 +554,7 @@ class Store extends EventEmitter {
       description: normalizeDescription(input.description),
       dueAt,
       priority: normalizePriority(input.priority),
+      color: normalizeColor(input.color),
       categoryId,
       done: false,
       completedAt: null,
@@ -513,6 +571,8 @@ class Store extends EventEmitter {
         ? Boolean(this.data.settings.defaultRemindAtDue)
         : Boolean(input.remindAtDue),
       recurrence: normalizeRecurrence(input.recurrence),
+      estimatedMinutes: normalizeMinutes(input.estimatedMinutes),
+      actualMinutes: normalizeMinutes(input.actualMinutes),
       notifiedBeforeAt: null,
       notifiedDueAt: null,
       snoozedUntil: null,
@@ -550,6 +610,9 @@ class Store extends EventEmitter {
     if (Object.prototype.hasOwnProperty.call(patch, 'priority')) {
       task.priority = normalizePriority(patch.priority);
     }
+    if (Object.prototype.hasOwnProperty.call(patch, 'color')) {
+      task.color = normalizeColor(patch.color);
+    }
     if (Object.prototype.hasOwnProperty.call(patch, 'categoryId')) {
       task.categoryId = this.data.categories.some((category) => category.id === patch.categoryId)
         ? patch.categoryId
@@ -566,6 +629,12 @@ class Store extends EventEmitter {
     }
     if (Object.prototype.hasOwnProperty.call(patch, 'recurrence')) {
       task.recurrence = normalizeRecurrence(patch.recurrence) || null;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'estimatedMinutes')) {
+      task.estimatedMinutes = normalizeMinutes(patch.estimatedMinutes);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'actualMinutes')) {
+      task.actualMinutes = normalizeMinutes(patch.actualMinutes);
     }
 
     const newReminders = task.reminders ? JSON.stringify(task.reminders) : null;
@@ -629,29 +698,51 @@ class Store extends EventEmitter {
     return clone(task);
   }
 
-  addSubtask(taskId, titleValue) {
+  addSubtask(taskId, titleValue, parentSubtaskId = null) {
     const task = this.data.tasks.find((item) => item.id === taskId);
     if (!task) throw new Error('Задача не найдена');
     const title = normalizeTitle(titleValue);
     if (!title) throw new Error('Введите название подзадачи');
 
-    task.subtasks.push({
+    const newSubtask = {
       id: uid(),
       title,
       done: false,
-      createdAt: nowIso()
-    });
+      createdAt: nowIso(),
+      subtasks: []
+    };
+
+    if (parentSubtaskId) {
+      const parent = findSubtask(task.subtasks, parentSubtaskId);
+      if (!parent) throw new Error('Родительская подзадача не найдена');
+      parent.subtasks.push(newSubtask);
+    } else {
+      task.subtasks.push(newSubtask);
+    }
+
     task.done = false;
     task.completedAt = null;
     task.updatedAt = nowIso();
+    ensureTaskInvariant(task);
     this.save();
     return clone(task);
   }
 
-  updateSubtask(taskId, subtaskId, patch = {}) {
+  findSubtask(subtasks, id) {
+    for (const subtask of subtasks) {
+      if (subtask.id === id) return subtask;
+      if (subtask.subtasks) {
+        const found = this.findSubtask(subtask.subtasks, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  updateSubtask(taskId, subtaskId, patch = {}, parentSubtaskId = null) {
     const task = this.data.tasks.find((item) => item.id === taskId);
     if (!task) throw new Error('Задача не найдена');
-    const subtask = task.subtasks.find((item) => item.id === subtaskId);
+    const subtask = this.findSubtask(task.subtasks, subtaskId);
     if (!subtask) throw new Error('Подзадача не найдена');
 
     if (Object.prototype.hasOwnProperty.call(patch, 'title')) {
@@ -664,47 +755,38 @@ class Store extends EventEmitter {
     return clone(task);
   }
 
-  toggleSubtask(taskId, subtaskId, done) {
+  toggleSubtask(taskId, subtaskId, done, parentSubtaskId = null) {
     const task = this.data.tasks.find((item) => item.id === taskId);
     if (!task) throw new Error('Задача не найдена');
-    const subtask = task.subtasks.find((item) => item.id === subtaskId);
+    const subtask = this.findSubtask(task.subtasks, subtaskId);
     if (!subtask) throw new Error('Подзадача не найдена');
 
     subtask.done = Boolean(done);
     task.updatedAt = nowIso();
-
-    if (task.subtasks.length > 0 && task.subtasks.every((item) => item.done)) {
-      task.done = true;
-      task.completedAt = task.completedAt || nowIso();
-      task.snoozedUntil = null;
-    } else if (task.done) {
-      task.done = false;
-      task.completedAt = null;
-    }
+    ensureTaskInvariant(task);
 
     this.save();
     return clone(task);
   }
 
-  deleteSubtask(taskId, subtaskId) {
+  deleteSubtask(taskId, subtaskId, parentSubtaskId = null) {
     const task = this.data.tasks.find((item) => item.id === taskId);
     if (!task) throw new Error('Задача не найдена');
-    const index = task.subtasks.findIndex((item) => item.id === subtaskId);
-    if (index === -1) throw new Error('Подзадача не найдена');
 
-    task.subtasks.splice(index, 1);
-    task.updatedAt = nowIso();
-
-    if (task.subtasks.length > 0) {
-      if (task.subtasks.every((item) => item.done)) {
-        task.done = true;
-        task.completedAt = task.completedAt || nowIso();
-        task.snoozedUntil = null;
-      } else {
-        task.done = false;
-        task.completedAt = null;
-      }
+    if (parentSubtaskId) {
+      const parent = this.findSubtask(task.subtasks, parentSubtaskId);
+      if (!parent) throw new Error('Родительская подзадача не найдена');
+      const index = parent.subtasks.findIndex((item) => item.id === subtaskId);
+      if (index === -1) throw new Error('Подзадача не найдена');
+      parent.subtasks.splice(index, 1);
+    } else {
+      const index = task.subtasks.findIndex((item) => item.id === subtaskId);
+      if (index === -1) throw new Error('Подзадача не найдена');
+      task.subtasks.splice(index, 1);
     }
+
+    task.updatedAt = nowIso();
+    ensureTaskInvariant(task);
 
     this.save();
     return clone(task);
@@ -863,8 +945,123 @@ class Store extends EventEmitter {
   }
   // End Notes
 
+  /* ------------------------------- Templates ------------------------------- */
+
+  getTemplates() {
+    return this.data.templates.map((t) => clone(t));
+  }
+
+  addTemplate(input = {}) {
+    const template = normalizeTemplate(input);
+    if (!template) throw new Error('Введите название шаблона');
+    this.data.templates.push(template);
+    this.save();
+    return clone(template);
+  }
+
+  updateTemplate(id, patch = {}) {
+    const template = this.data.templates.find((item) => item.id === id);
+    if (!template) throw new Error('Шаблон не найден');
+    if (Object.prototype.hasOwnProperty.call(patch, 'title')) {
+      const title = normalizeTitle(patch.title);
+      if (!title) throw new Error('Введите название шаблона');
+      template.title = title;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'content')) {
+      template.content = normalizeNoteContent(patch.content);
+    }
+    this.save();
+    return clone(template);
+  }
+
+  deleteTemplate(id) {
+    const index = this.data.templates.findIndex((item) => item.id === id);
+    if (index === -1) throw new Error('Шаблон не найден');
+    this.data.templates.splice(index, 1);
+    this.save();
+  }
+
+  /* ------------------------------- Task Templates ------------------------------- */
+
+  getTaskTemplates() {
+    return this.data.taskTemplates.map((t) => clone(t));
+  }
+
+  addTaskTemplate(input = {}) {
+    const template = normalizeTaskTemplate(input);
+    if (!template) throw new Error('Введите название шаблона');
+    this.data.taskTemplates.push(template);
+    this.save();
+    return clone(template);
+  }
+
+  updateTaskTemplate(id, patch = {}) {
+    const template = this.data.taskTemplates.find((item) => item.id === id);
+    if (!template) throw new Error('Шаблон не найден');
+    if (Object.prototype.hasOwnProperty.call(patch, 'title')) {
+      const title = normalizeTitle(patch.title);
+      if (!title) throw new Error('Введите название шаблона');
+      template.title = title;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'description')) {
+      template.description = normalizeDescription(patch.description);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'priority')) {
+      template.priority = normalizePriority(patch.priority);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'categoryId')) {
+      template.categoryId = patch.categoryId || null;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'color')) {
+      template.color = patch.color ? normalizeColor(patch.color) : null;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'estimatedMinutes')) {
+      template.estimatedMinutes = normalizeMinutes(patch.estimatedMinutes);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'reminders')) {
+      template.reminders = normalizeReminders(patch.reminders) || null;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'recurrence')) {
+      template.recurrence = normalizeRecurrence(patch.recurrence) || null;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'subtasks')) {
+      template.subtasks = Array.isArray(patch.subtasks)
+        ? patch.subtasks.map((sub) => normalizeSubtask({ ...sub, done: false })).filter(Boolean)
+        : [];
+    }
+    this.save();
+    return clone(template);
+  }
+
+  deleteTaskTemplate(id) {
+    const index = this.data.taskTemplates.findIndex((item) => item.id === id);
+    if (index === -1) throw new Error('Шаблон не найден');
+    this.data.taskTemplates.splice(index, 1);
+    this.save();
+  }
+
   exportTo(filePath) {
     fs.writeFileSync(filePath, `${JSON.stringify(this.data, null, 2)}\n`, 'utf8');
+  }
+
+  exportToCsv(filePath) {
+    const lines = [];
+    lines.push('id,title,description,dueAt,priority,categoryId,done,createdAt');
+    for (const task of this.data.tasks) {
+      const esc = (value) => String(value === null || value === undefined ? '' : value).replace(/"/g, '""');
+      const row = [
+        esc(task.id),
+        `"${esc(task.title)}"`,
+        `"${esc(task.description)}"`,
+        esc(task.dueAt || ''),
+        esc(task.priority || ''),
+        esc(task.categoryId || ''),
+        task.done ? 1 : 0,
+        esc(task.createdAt || '')
+      ];
+      lines.push(row.join(','));
+    }
+    fs.writeFileSync(filePath, `${lines.join('\n')}\n`, 'utf8');
   }
 
   importFrom(filePath) {

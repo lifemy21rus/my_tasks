@@ -30,6 +30,13 @@
           <span class="nav-label">Все задачи</span>
           <span class="nav-count" data-count="all">0</span>
         </button>
+        <button class="nav-item" data-view="inbox" type="button">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5 4.5h14c.83 0 1.5.67 1.5 1.5V10c0 .83-.67 1.5-1.5 1.5H5c-.83 0-1.5-.67-1.5-1.5V6c0-.83.67-1.5 1.5-1.5"/></svg>
+          </span>
+          <span class="nav-label">Входящие</span>
+          <span class="nav-count" data-count="inbox">0</span>
+        </button>
         <button class="nav-item" data-view="notes" type="button">
           <span class="nav-icon">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h10l4 4v12H5z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>
@@ -240,6 +247,45 @@
           </label>
         </div>
 
+        <div class="field-row">
+          <label class="field field-grow">
+            <span class="field-label">Цвет задачи</span>
+            <div class="color-grid task-color-grid" id="task-color-grid">
+              <button class="color-swatch" type="button" data-color="#ef4444" style="background:#ef4444" title="Красный"></button>
+              <button class="color-swatch" type="button" data-color="#f97316" style="background:#f97316" title="Оранжевый"></button>
+              <button class="color-swatch" type="button" data-color="#f59e0b" style="background:#f59e0b" title="Янтарный"></button>
+              <button class="color-swatch" type="button" data-color="#84cc16" style="background:#84cc16" title="Зелёный"></button>
+              <button class="color-swatch" type="button" data-color="#22c55e" style="background:#22c55e" title="Изумрудный"></button>
+              <button class="color-swatch" type="button" data-color="#06b6d4" style="background:#06b6d4" title="Голубой"></button>
+              <button class="color-swatch" type="button" data-color="#3b82f6" style="background:#3b82f6" title="Синий"></button>
+              <button class="color-swatch" type="button" data-color="#8b5cf6" style="background:#8b5cf6" title="Фиолетовый"></button>
+            </div>
+            <span class="field-hint">Цветной индикатор в карточке задачи.</span>
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label class="field field-grow">
+            <span class="field-label">Шаблон задачи</span>
+            <select id="task-template-select" class="select select-compact">
+              <option value="">Без шаблона</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label class="field field-grow">
+            <span class="field-label">Оценочное время (мин.)</span>
+            <input type="number" id="task-estimated-minutes" class="input input-sm" min="0" placeholder="0" />
+            <span class="field-hint">Сколько времени планируется потратить на задачу.</span>
+          </label>
+          <label class="field field-grow">
+            <span class="field-label">Затрачено времени (мин.)</span>
+            <input type="number" id="task-actual-minutes" class="input input-sm" min="0" placeholder="0" />
+            <span class="field-hint">Фактически затраченное время.</span>
+          </label>
+        </div>
+
         <div class="field reminder-field">
           <span class="field-label">Напоминания</span>
           <div class="reminder-list" id="reminder-list"></div>
@@ -312,6 +358,7 @@
         <button class="btn btn-ghost danger-ghost" id="task-delete-btn" type="button" hidden>Удалить</button>
         <div class="modal-foot-right">
           <button class="btn btn-ghost" id="task-cancel-btn" type="button">Отмена</button>
+          <button class="btn btn-ghost" id="task-save-as-template-btn" type="button">Сохранить как шаблон</button>
           <button class="btn btn-primary" id="task-save-btn" type="button">Сохранить</button>
         </div>
       </footer>
@@ -410,6 +457,26 @@
               <span class="switch-track"></span>
             </span>
           </label>
+          <label class="setting-row">
+            <span class="setting-text">
+              <span class="setting-name">Показывать мини-панель</span>
+              <span class="setting-desc">Маленькое окно поверх всех окон с задачами и заметками.</span>
+            </span>
+            <span class="switch">
+              <input type="checkbox" id="setting-mini-panel" />
+              <span class="switch-track"></span>
+            </span>
+          </label>
+          <label class="setting-row">
+            <span class="setting-text">
+              <span class="setting-name">Закрывать приложение при закрытии окна</span>
+              <span class="setting-desc">По умолчанию окно сворачивается в трей. Включите, чтобы полностью выходить из приложения.</span>
+            </span>
+            <span class="switch">
+              <input type="checkbox" id="setting-quit-on-close" />
+              <span class="switch-track"></span>
+            </span>
+          </label>
         </section>
 
         <section class="settings-section">
@@ -471,6 +538,7 @@
           <h3 class="settings-title">Данные</h3>
           <div class="settings-actions">
             <button class="btn btn-ghost" id="export-btn" type="button">Экспорт…</button>
+            <button class="btn btn-ghost" id="export-csv-btn" type="button">Экспорт CSV…</button>
             <button class="btn btn-ghost" id="import-btn" type="button">Импорт…</button>
             <button class="btn btn-ghost" id="backup-btn" type="button">Резервная копия</button>
             <button class="btn btn-ghost" id="open-folder-btn" type="button">Открыть папку</button>
@@ -484,6 +552,11 @@
             «Мои задачи» — локальный планировщик. Без облака, входа и сбора данных.
             <span id="version-label"></span>
           </p>
+          <div class="settings-actions">
+            <button class="btn btn-ghost" id="check-updates-btn" type="button">Проверить обновления</button>
+            <button class="btn btn-primary" id="install-update-btn" type="button" hidden>Установить обновление</button>
+          </div>
+          <p class="settings-note" id="update-status-note" hidden></p>
         </section>
       </div>
       <footer class="modal-foot">
@@ -501,6 +574,12 @@
         </button>
       </header>
       <div class="modal-body">
+        <label class="field">
+          <span class="field-label">Шаблон</span>
+          <select id="note-template-select" class="select select-compact">
+            <option value="">Без шаблона</option>
+          </select>
+        </label>
         <label class="field">
           <span class="field-label">Название</span>
           <input type="text" id="note-title-input" class="input input-lg" maxlength="500" placeholder="Заголовок заметки" autocomplete="off" />

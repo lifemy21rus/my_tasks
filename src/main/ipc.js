@@ -8,7 +8,7 @@ function fail(error) {
 }
 
 function registerIpc(deps) {
-  const { store, notifications, autostart, hotkey, getRuntime, ui } = deps;
+  const { store, notifications, autostart, updater, hotkey, getRuntime, ui } = deps;
   const windowUi = ui || {};
 
   function statePayload() {
@@ -88,22 +88,22 @@ function registerIpc(deps) {
   });
 
   handle('subtask:add', async (_event, payload) => {
-    const task = store.addSubtask(payload.taskId, payload.title);
+    const task = store.addSubtask(payload.taskId, payload.title, payload.parentSubtaskId || null);
     return ok({ result: task });
   });
 
   handle('subtask:update', async (_event, payload) => {
-    const task = store.updateSubtask(payload.taskId, payload.subtaskId, payload.patch || {});
+    const task = store.updateSubtask(payload.taskId, payload.subtaskId, payload.patch || {}, payload.parentSubtaskId || null);
     return ok({ result: task });
   });
 
   handle('subtask:delete', async (_event, payload) => {
-    const task = store.deleteSubtask(payload.taskId, payload.subtaskId);
+    const task = store.deleteSubtask(payload.taskId, payload.subtaskId, payload.parentSubtaskId || null);
     return ok({ result: task });
   });
 
   handle('subtask:toggle', async (_event, payload) => {
-    const task = store.toggleSubtask(payload.taskId, payload.subtaskId, payload.done);
+    const task = store.toggleSubtask(payload.taskId, payload.subtaskId, payload.done, payload.parentSubtaskId || null);
     return ok({ result: task });
   });
 
@@ -128,6 +128,34 @@ function registerIpc(deps) {
   });
 
   handle('notes:get', async () => ok({ result: store.getNotes() }));
+
+  handle('note-templates:get', async () => ok({ result: store.getTemplates() }));
+  handle('note-templates:add', async (_event, input) => {
+    const template = store.addTemplate(input);
+    return ok({ result: template });
+  });
+  handle('note-templates:update', async (_event, payload) => {
+    const template = store.updateTemplate(payload.id, payload.patch || {});
+    return ok({ result: template });
+  });
+  handle('note-templates:delete', async (_event, id) => {
+    store.deleteTemplate(id);
+    return ok();
+  });
+
+  handle('task-templates:get', async () => ok({ result: store.getTaskTemplates() }));
+  handle('task-templates:add', async (_event, input) => {
+    const template = store.addTaskTemplate(input);
+    return ok({ result: template });
+  });
+  handle('task-templates:update', async (_event, payload) => {
+    const template = store.updateTaskTemplate(payload.id, payload.patch || {});
+    return ok({ result: template });
+  });
+  handle('task-templates:delete', async (_event, id) => {
+    store.deleteTaskTemplate(id);
+    return ok();
+  });
 
   handle('category:add', async (_event, input) => {
     const category = store.addCategory(input);
@@ -229,6 +257,23 @@ function registerIpc(deps) {
     return ok({ result: { path: result.filePath } });
   });
 
+  handle('data:export-csv', async (event) => {
+    const d = new Date();
+    const stamp = `${d.getFullYear()}-${utils.pad2(d.getMonth() + 1)}-${utils.pad2(d.getDate())}`;
+    const result = await showSaveDialog(event, {
+      title: 'Экспорт задач в CSV',
+      defaultPath: `my-tasks-${stamp}.csv`,
+      filters: [{ name: 'CSV', extensions: ['csv'] }]
+    });
+
+    if (result.canceled || !result.filePath) {
+      return ok({ result: { canceled: true } });
+    }
+
+    store.exportToCsv(result.filePath);
+    return ok({ result: { path: result.filePath } });
+  });
+
   handle('data:import', async (event) => {
     const result = await showOpenDialog(event, {
       title: 'Импорт задач',
@@ -259,6 +304,22 @@ function registerIpc(deps) {
     if (!notifications.showTest()) {
       throw new Error('Уведомления Windows не поддерживаются на этой системе');
     }
+    return ok();
+  });
+
+  handle('app:check-for-updates', async () => {
+    if (!updater) return ok({ result: { available: false, message: 'Автообновление недоступно' } });
+    try {
+      updater.check();
+      return ok({ result: { checking: true } });
+    } catch (err) {
+      throw new Error(err && err.message ? err.message : 'Ошибка проверки обновлений');
+    }
+  });
+
+  handle('app:install-update', async () => {
+    if (!updater) throw new Error('Автообновление недоступно');
+    updater.install();
     return ok();
   });
 }

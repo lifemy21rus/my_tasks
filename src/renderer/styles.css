@@ -940,6 +940,18 @@ button {
   box-shadow: none;
 }
 
+.meta-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--text-soft);
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: var(--bg-soft);
+  white-space: nowrap;
+}
+
 .subtask-progress {
   display: inline-flex;
   align-items: center;
@@ -1041,6 +1053,26 @@ button {
   flex-direction: column;
   gap: 3px;
   background: var(--panel-soft);
+}
+
+/* Вложенные подзадачи — отступ по уровню */
+.subtasks-panel .subtasks-panel {
+  padding-left: 46px;
+  border-top: 0;
+  margin-top: 4px;
+  margin-left: 16px;
+  border-left: 2px solid var(--border-soft);
+}
+
+.subtask-row .icon-btn.small {
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+}
+
+.subtask-row .icon-btn.small svg {
+  width: 14px;
+  height: 14px;
 }
 
 .subtask-row {
@@ -1942,8 +1974,29 @@ button {
   }
 }
 
-/* Приоритетные фильтры (pills) */
-.filter-pills {
+/* Цветная метка задачи */
+.task-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  margin-top: 3px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+}
+
+/* Сетка цветов задачи в модалке */
+.task-color-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Универсальный поиск: подсветка найденных заметок в режиме «Все задачи» */
+.notes-section.has-search-results {
+  display: block;
+}
+
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -1974,6 +2027,24 @@ button {
 .filter-pill[data-priority="high"].is-active { color: var(--primary-text); }
 .filter-pill[data-priority="normal"] { color: var(--warning); }
 .filter-pill[data-priority="low"] { color: var(--success); }
+
+/* Цветная метка задачи */
+.task-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  margin-top: 3px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+}
+
+/* Сетка цветов задачи в модалке */
+.task-color-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
 
 
 
