@@ -194,6 +194,12 @@ function registerIpc(deps) {
     }
 
     if (
+      Object.prototype.hasOwnProperty.call(patch || {}, 'startMenuShortcut')
+    ) {
+      autostart.setStartMenuShortcut(next.startMenuShortcut);
+    }
+
+    if (
       Object.prototype.hasOwnProperty.call(patch || {}, 'hotkey') ||
       Object.prototype.hasOwnProperty.call(patch || {}, 'hotkeyEnabled')
     ) {

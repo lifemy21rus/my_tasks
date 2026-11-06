@@ -403,7 +403,7 @@ function createTray() {
 
   const icon = loadIcon(process.platform === 'win32' ? 'tray.png' : 'icon.png');
   tray = new Tray(icon);
-  tray.setToolTip('Мои задачи');
+  tray.setToolTip('Планировщик');
 
   const contextMenu = Menu.buildFromTemplate([
     { label: 'Показать', click: showWindow },
@@ -459,7 +459,7 @@ function createWindow() {
     minHeight: 620,
     show: false,
     autoHideMenuBar: true,
-    title: 'Мои задачи',
+    title: 'Планировщик',
     icon: loadIcon('icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -735,6 +735,11 @@ app.whenReady().then(() => {
       autostart.setEnabled(settings.autostart, settings.startMinimized);
     } catch (err) {
       console.error('Ошибка синхронизации автозапуска:', err);
+    }
+    try {
+      autostart.setStartMenuShortcut(settings.startMenuShortcut);
+    } catch (err) {
+      console.error('Ошибка создания ярлыка в меню «Пуск»:', err);
     }
 
     notifications = new Notifications({

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Мои задачи</title>
+  <title>Планировщик</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -17,8 +17,7 @@
           </svg>
         </div>
         <div class="brand-text">
-          <span class="brand-title">Мои задачи</span>
-          <span class="brand-sub" id="sidebar-count">0 задач</span>
+          <span class="brand-title">Планировщик</span>
         </div>
       </div>
 
@@ -30,13 +29,6 @@
           <span class="nav-label">Все задачи</span>
           <span class="nav-count" data-count="all">0</span>
         </button>
-        <button class="nav-item" data-view="inbox" type="button">
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5 4.5h14c.83 0 1.5.67 1.5 1.5V10c0 .83-.67 1.5-1.5 1.5H5c-.83 0-1.5-.67-1.5-1.5V6c0-.83.67-1.5 1.5-1.5"/></svg>
-          </span>
-          <span class="nav-label">Входящие</span>
-          <span class="nav-count" data-count="inbox">0</span>
-        </button>
         <button class="nav-item" data-view="notes" type="button">
           <span class="nav-icon">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h10l4 4v12H5z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>
@@ -44,42 +36,21 @@
           <span class="nav-label">Заметки</span>
           <span class="nav-count" data-count="notes">0</span>
         </button>
-        <button class="nav-item" data-view="today" type="button">
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
-          </span>
-          <span class="nav-label">Сегодня</span>
-          <span class="nav-count" data-count="today">0</span>
-        </button>
-        <button class="nav-item" data-view="tomorrow" type="button">
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/><path d="M12 8v4l2.5 1.5"/></svg>
-          </span>
-          <span class="nav-label">Завтра</span>
-          <span class="nav-count" data-count="tomorrow">0</span>
-        </button>
-        <button class="nav-item" data-view="overdue" type="button">
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.5"/></svg>
-          </span>
-          <span class="nav-label">Просроченные</span>
-          <span class="nav-count" data-count="overdue">0</span>
-        </button>
-        <button class="nav-item" data-view="soon" type="button">
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-          </span>
-          <span class="nav-label">Ближайшая неделя</span>
-          <span class="nav-count" data-count="soon">0</span>
-        </button>
-        <button class="nav-item" data-view="done" type="button">
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5V12a8 8 0 1 1-4.7-7.3"/><path d="M20 5l-8 8-3-3"/></svg>
-          </span>
-          <span class="nav-label">Выполненные</span>
-          <span class="nav-count" data-count="done">0</span>
-        </button>
       </nav>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-head">
+          <span>Сроки</span>
+        </div>
+        <select class="due-filter-select" id="due-filter" type="button">
+          <option value="">Все со сроком</option>
+          <option value="inbox">Без срока (Входящие)</option>
+          <option value="today">Сегодня</option>
+          <option value="tomorrow">Завтра</option>
+          <option value="overdue">Просроченные</option>
+          <option value="soon">Ближайшая неделя</option>
+        </select>
+      </div>
 
       <div class="sidebar-section">
         <div class="sidebar-section-head">
@@ -449,6 +420,16 @@
           </label>
           <label class="setting-row">
             <span class="setting-text">
+              <span class="setting-name">Ярлык в меню «Пуск»</span>
+              <span class="setting-desc">Создать ярлык приложения в меню «Пуск» (нужен для надёжной работы уведомлений).</span>
+            </span>
+            <span class="switch">
+              <input type="checkbox" id="setting-start-menu-shortcut" />
+              <span class="switch-track"></span>
+            </span>
+          </label>
+          <label class="setting-row">
+            <span class="setting-text">
               <span class="setting-name">Запускать свёрнутым</span>
               <span class="setting-desc">Окно не будет открываться сразу, приложение останется в трее.</span>
             </span>
@@ -549,7 +530,7 @@
         <section class="settings-section">
           <h3 class="settings-title">О приложении</h3>
           <p class="settings-note">
-            «Мои задачи» — локальный планировщик. Без облака, входа и сбора данных.
+            «Планировщик» — локальный планировщик задач и заметок. Без облака, входа и сбора данных.
             <span id="version-label"></span>
           </p>
           <div class="settings-actions">

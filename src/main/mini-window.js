@@ -68,7 +68,7 @@ class MiniPanel {
       skipTaskbar: true,
       alwaysOnTop: false,
       hasShadow: true,
-      title: 'Мои задачи',
+      title: 'Планировщик',
       icon: this.icon || undefined,
       backgroundColor: backgroundColorFor(this.getTheme()),
       webPreferences: {

@@ -210,7 +210,7 @@ button {
 }
 
 .mini-icon-btn:focus-visible,
-.mini-open-btn:focus-visible,
+
 .mini-check:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
@@ -678,7 +678,6 @@ button {
   flex: none;
 }
 
-.mini-open-btn {
   display: inline-grid;
   place-items: center;
   width: 32px;
@@ -690,7 +689,6 @@ button {
   color: var(--text-soft);
 }
 
-.mini-open-btn:hover {
   background: var(--panel-hover);
   color: var(--text);
 }

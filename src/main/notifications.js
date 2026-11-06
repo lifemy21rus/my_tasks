@@ -20,7 +20,7 @@ class Notifications {
     return Notification.isSupported();
   }
 
-  show({ title = 'Мои задачи', body, taskId = null, action = null, actions = [] }) {
+  show({ title = 'Планировщик', body, taskId = null, action = null, actions = [] }) {
     if (!this.isSupported()) return false;
 
     let notification;
@@ -126,7 +126,7 @@ class Notifications {
 
   showTest() {
     return this.show({
-      title: 'Мои задачи',
+      title: 'Планировщик',
       body: 'Уведомления работают. Здесь будут напоминания о сроках.'
     });
   }

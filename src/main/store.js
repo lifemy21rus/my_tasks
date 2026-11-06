@@ -177,7 +177,8 @@ function normalizeSettings(raw, isPackaged) {
     hotkeyEnabled: typeof source.hotkeyEnabled === 'boolean' ? source.hotkeyEnabled : true,
     miniPanel: typeof source.miniPanel === 'boolean' ? source.miniPanel : true,
     miniX: typeof source.miniX === 'number' && Number.isFinite(source.miniX) ? source.miniX : null,
-    quitOnClose: typeof source.quitOnClose === 'boolean' ? source.quitOnClose : false
+    quitOnClose: typeof source.quitOnClose === 'boolean' ? source.quitOnClose : false,
+    startMenuShortcut: typeof source.startMenuShortcut === 'boolean' ? source.startMenuShortcut : false
   };
 }
 
@@ -533,6 +534,9 @@ class Store extends EventEmitter {
     if (Object.prototype.hasOwnProperty.call(patch, 'quitOnClose')) {
       next.quitOnClose = Boolean(patch.quitOnClose);
     }
+    if (Object.prototype.hasOwnProperty.call(patch, 'startMenuShortcut')) {
+      next.startMenuShortcut = Boolean(patch.startMenuShortcut);
+    }
 
     this.data.settings = next;
     this.save();
@@ -713,7 +717,7 @@ class Store extends EventEmitter {
     };
 
     if (parentSubtaskId) {
-      const parent = findSubtask(task.subtasks, parentSubtaskId);
+      const parent = this.findSubtask(task.subtasks, parentSubtaskId);
       if (!parent) throw new Error('Родительская подзадача не найдена');
       parent.subtasks.push(newSubtask);
     } else {

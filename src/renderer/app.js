@@ -12,8 +12,10 @@
     filter: 'active',
     search: '',
     sort: 'smart',
+    dueFilter: '',
     expanded: new Set(),
     draft: null,
+    draftSubtaskAddTarget: null,
     categoryDraft: null,
     capturingHotkey: false,
     confirmReturn: null,
@@ -29,7 +31,6 @@
   const $$ = (selector, root) => Array.from((root || document).querySelectorAll(selector));
 
   const els = {
-    sidebarCount: $('sidebar-count'),
     categoryList: $('category-list'),
     viewTitle: $('view-title'),
     viewSub: $('view-sub'),
@@ -116,11 +117,13 @@
     categoryCancelBtn: $('category-cancel-btn'),
     categoryModalClose: $('category-modal-close'),
     priorityFilters: $('priority-filters'),
+    dueFilterSelect: $('due-filter'),
     settingsModal: $('settings-modal'),
     settingsDoneBtn: $('settings-done-btn'),
     settingsModalClose: $('settings-modal-close'),
     settingAutostart: $('setting-autostart'),
     settingStartMinimized: $('setting-start-minimized'),
+    settingStartMenuShortcut: $('setting-start-menu-shortcut'),
     settingMiniPanel: $('setting-mini-panel'),
     settingQuitOnClose: $('setting-quit-on-close'),
     settingDefaultRemind: $('setting-default-remind'),
@@ -166,8 +169,8 @@
     const notes = visibleNotes();
     const hasSearch = Boolean(state.search.trim());
 
-    // В разделе «Все задачи» заметки показываются только при активном поиске
-    if (state.view === 'all' && !hasSearch) {
+    // В разделах «Все задачи» и по категории заметки показываются только при активном поиске
+    if ((state.view === 'all' || state.view === 'category') && !hasSearch) {
       els.notesSection.hidden = true;
       return;
     }
@@ -446,6 +449,10 @@
       list = list.filter((task) => task.priority === state.priorityFilter);
     }
 
+    if (state.dueFilter && state.view !== 'inbox' && state.view !== 'notes') {
+      list = list.filter((task) => dueMatchesView(task, state.dueFilter, now));
+    }
+
     return list.sort(compareTasks);
   }
 
@@ -567,9 +574,6 @@
 
   function renderSidebar() {
     const counts = computeCounts();
-    const activeTotal = counts.all + counts.done;
-
-    els.sidebarCount.textContent = U.taskCount(activeTotal);
 
     $$('.nav-item[data-view]').forEach((button) => {
       const view = button.dataset.view;
@@ -581,10 +585,24 @@
       button.classList.toggle('is-active', state.view === view);
     });
 
+    const categorySection = els.categoryList.closest('.sidebar-section');
+    if (categorySection) {
+      categorySection.hidden = state.view === 'notes';
+    }
+
+    const dueSection = els.dueFilterSelect.closest('.sidebar-section');
+    if (dueSection) {
+      dueSection.hidden = state.view === 'notes';
+    }
+
     renderCategories(counts);
   }
 
   function renderCategories(counts) {
+    if (state.view === 'notes') {
+      els.categoryList.textContent = '';
+      return;
+    }
     const categories = state.data.categories;
     els.categoryList.textContent = '';
 
@@ -711,6 +729,21 @@
       chip.classList.toggle('is-active', chip.dataset.filter === state.filter);
     });
     els.sortSelect.value = state.sort;
+    syncPriorityFilters();
+    syncDueFilter();
+  }
+
+  function syncPriorityFilters() {
+    const active = state.priorityFilter || '';
+    $$('.filter-pill', els.priorityFilters).forEach((pill) => {
+      pill.classList.toggle('is-active', (pill.dataset.priority || '') === active);
+    });
+  }
+
+  function syncDueFilter() {
+    if (els.dueFilterSelect) {
+      els.dueFilterSelect.value = state.dueFilter || '';
+    }
   }
 
   function renderTaskList() {
@@ -843,12 +876,7 @@
     }
 
     if (task.color) {
-      const colorDot = document.createElement('span');
-      colorDot.className = 'task-color-dot';
-      colorDot.style.background = task.color;
-      colorDot.title = 'Цвет задачи';
-      colorDot.setAttribute('aria-label', 'Цвет задачи');
-      titleRow.appendChild(colorDot);
+      card.style.setProperty('--task-color', task.color);
     }
 
     body.appendChild(titleRow);
@@ -1058,12 +1086,14 @@
 
     const visibleCount = getVisibleTasks().length;
     const total = state.data.tasks.length;
-    const notesCount = state.data.notes.length;
     let text = total === visibleCount
       ? U.taskCount(total)
       : `Показано ${visibleCount} из ${total}`;
-    if (notesCount > 0) {
-      text += ` · ${noteCount(notesCount)}`;
+    if (state.view === 'notes') {
+      const notesCount = state.data.notes.length;
+      if (notesCount > 0) {
+        text += ` · ${noteCount(notesCount)}`;
+      }
     }
     els.statusLeft.textContent = text;
 
@@ -1083,7 +1113,10 @@
     } else {
       state.view = view;
       state.categoryId = null;
-      if (view === 'notes') state.priorityFilter = '';
+      if (view === 'notes' || view === 'inbox') {
+        state.priorityFilter = '';
+        state.dueFilter = '';
+      }
       if (view === 'done') state.filter = 'all';
       else if (state.filter === 'done') state.filter = 'active';
     }
@@ -1113,7 +1146,7 @@
         actualMinutes: task.actualMinutes || null,
         reminders: task.reminders ? task.reminders.map((r) => ({ offset: r.offset, type: r.type })) : null,
         recurrence: task.recurrence ? { ...task.recurrence } : null,
-        subtasks: (task.subtasks || []).map((sub) => ({ id: sub.id, title: sub.title, done: sub.done }))
+        subtasks: (task.subtasks || []).map(mapDraftSubtask)
       };
       els.taskModalTitle.textContent = 'Редактировать задачу';
       els.taskDeleteBtn.hidden = false;
@@ -1206,15 +1239,30 @@
     }
   }
 
+  function mapDraftSubtask(sub) {
+    return {
+      id: sub.id || null,
+      title: sub.title,
+      done: Boolean(sub.done),
+      subtasks: (sub.subtasks || []).map(mapDraftSubtask)
+    };
+  }
+
   function renderDraftSubtasks() {
     const list = els.subtaskEditorList;
     list.textContent = '';
     const draft = state.draft;
     if (!draft) return;
 
-    draft.subtasks.forEach((subtask, index) => {
+    renderDraftSubtaskItems(draft.subtasks || [], list, null);
+    updateSubtaskCounter();
+  }
+
+  function renderDraftSubtaskItems(subtasks, container, parent) {
+    (subtasks || []).forEach((subtask) => {
       const row = document.createElement('div');
       row.className = `subtask-editor-row${subtask.done ? ' is-done' : ''}`;
+      if (parent) row.style.paddingLeft = '24px';
 
       const check = document.createElement('input');
       check.type = 'checkbox';
@@ -1234,16 +1282,43 @@
         subtask.title = input.value;
       });
 
-      const remove = makeIconButton('remove-draft-subtask', 'Удалить подзадачу', 'x', 'danger');
-      remove.addEventListener('click', () => {
-        draft.subtasks.splice(index, 1);
-        renderDraftSubtasks();
-        updateSubtaskCounter();
+      const actions = document.createElement('div');
+      actions.className = 'subtask-editor-actions';
+
+      const addSub = makeIconButton('add-draft-sub-subtask', 'Добавить подзадачу', 'plus');
+      addSub.classList.add('small');
+      addSub.addEventListener('click', (event) => {
+        event.stopPropagation();
+        state.draftSubtaskAddTarget = subtask;
+        if (!subtask.subtasks) subtask.subtasks = [];
+        els.subtaskInput.placeholder = `Подзадача для «${subtask.title}»…`;
+        els.subtaskInput.focus();
       });
 
-      row.append(check, input, remove);
-      list.appendChild(row);
+      const remove = makeIconButton('remove-draft-subtask', 'Удалить подзадачу', 'x', 'danger');
+      remove.addEventListener('click', (event) => {
+        event.stopPropagation();
+        removeDraftSubtask(subtask, parent);
+        renderDraftSubtasks();
+      });
+
+      actions.append(addSub, remove);
+      row.append(check, input, actions);
+      container.appendChild(row);
+
+      if (subtask.subtasks && subtask.subtasks.length > 0) {
+        const nested = document.createElement('div');
+        nested.className = 'subtask-editor-nested';
+        renderDraftSubtaskItems(subtask.subtasks, nested, subtask);
+        container.appendChild(nested);
+      }
     });
+  }
+
+  function removeDraftSubtask(subtask, parent) {
+    const target = parent ? parent.subtasks : state.draft.subtasks;
+    const idx = target.indexOf(subtask);
+    if (idx !== -1) target.splice(idx, 1);
   }
 
   function updateSubtaskCounter() {
@@ -1259,8 +1334,13 @@
   function addDraftSubtask() {
     const value = els.subtaskInput.value.trim();
     if (!value || !state.draft) return;
-    state.draft.subtasks.push({ id: null, title: value, done: false });
+    const target = state.draftSubtaskAddTarget
+      ? (state.draftSubtaskAddTarget.subtasks || (state.draftSubtaskAddTarget.subtasks = []))
+      : state.draft.subtasks;
+    target.push({ id: null, title: value, done: false, subtasks: [] });
+    state.draftSubtaskAddTarget = null;
     els.subtaskInput.value = '';
+    els.subtaskInput.placeholder = 'Название подзадачи';
     renderDraftSubtasks();
     updateSubtaskCounter();
     els.subtaskInput.focus();
@@ -1310,7 +1390,7 @@
 
     try {
       if (!draft.id) {
-        const subtasks = draft.subtasks
+        const subtasks = (draft.subtasks || [])
           .filter((sub) => sub.title.trim())
           .map((sub) => ({
             title: sub.title.trim(),
@@ -1330,15 +1410,15 @@
       const res = await invoke(api.updateTask(draft.id, patch));
       if (!res) return;
 
-      const original = draft.subtasks.filter((sub) => sub.id);
+      const original = (draft.subtasks || []).filter((sub) => sub.id);
       const originalIds = new Set(original.map((sub) => sub.id));
-      const draftIds = new Set(draft.subtasks.filter((sub) => sub.id).map((sub) => sub.id));
+      const draftIds = new Set((draft.subtasks || []).filter((sub) => sub.id).map((sub) => sub.id));
 
       for (const id of originalIds) {
         if (!draftIds.has(id)) await api.deleteSubtask(draft.id, id);
       }
 
-      for (const sub of draft.subtasks) {
+      for (const sub of (draft.subtasks || [])) {
         if (!sub.title.trim()) continue;
         if (sub.id) {
           const before = original.find((item) => item.id === sub.id);
@@ -1494,6 +1574,7 @@
 
     els.settingAutostart.checked = Boolean(settings.autostart);
     els.settingStartMinimized.checked = Boolean(settings.startMinimized);
+    els.settingStartMenuShortcut.checked = Boolean(settings.startMenuShortcut);
     els.settingMiniPanel.checked = Boolean(settings.miniPanel);
     els.settingQuitOnClose.checked = Boolean(settings.quitOnClose);
     els.settingDefaultRemind.value = String(settings.defaultRemindBefore);
@@ -1855,6 +1936,11 @@
       });
     });
 
+    els.dueFilterSelect.addEventListener('change', () => {
+      state.dueFilter = els.dueFilterSelect.value;
+      renderAll();
+    });
+
     els.priorityFilters.addEventListener('click', (event) => {
       const pill = event.target.closest('.filter-pill');
       if (!pill) return;
@@ -2186,6 +2272,9 @@
 
     els.settingAutostart.addEventListener('change', () => {
       updateSetting({ autostart: els.settingAutostart.checked });
+    });
+    els.settingStartMenuShortcut.addEventListener('change', () => {
+      updateSetting({ startMenuShortcut: els.settingStartMenuShortcut.checked });
     });
     els.settingStartMinimized.addEventListener('change', () => {
       updateSetting({ startMinimized: els.settingStartMinimized.checked });

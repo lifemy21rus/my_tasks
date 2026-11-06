@@ -17,8 +17,24 @@ function getShortcutPath() {
   );
 }
 
+function getStartMenuShortcutPath() {
+  const appData = process.env.APPDATA || app.getPath('appData');
+  return path.join(
+    appData,
+    'Microsoft',
+    'Windows',
+    'Start Menu',
+    'Programs',
+    'MyTasks.lnk'
+  );
+}
+
 function isEnabled() {
   return fs.existsSync(getShortcutPath());
+}
+
+function isStartMenuShortcutEnabled() {
+  return fs.existsSync(getStartMenuShortcutPath());
 }
 
 function setEnabled(enabled, startMinimized) {
@@ -81,4 +97,67 @@ function setEnabled(enabled, startMinimized) {
   return true;
 }
 
-module.exports = { getShortcutPath, isEnabled, setEnabled };
+function setStartMenuShortcut(enabled) {
+  if (process.platform !== 'win32') return false;
+
+  const shortcut = getStartMenuShortcutPath();
+  if (!enabled) {
+    if (fs.existsSync(shortcut)) {
+      try {
+        fs.unlinkSync(shortcut);
+      } catch (err) {
+        throw new Error(`Не удалось удалить ярлык из меню «Пуск»: ${err.message}`);
+      }
+    }
+    return true;
+  }
+
+  fs.mkdirSync(path.dirname(shortcut), { recursive: true });
+
+  // В dev режиме запускаем через electron с путем к приложению в аргументе
+  let target;
+  let args;
+  if (app.isPackaged) {
+    target = process.execPath;
+    args = '';
+  } else {
+    target = process.execPath;
+    args = app.getAppPath();
+  }
+
+  const details = {
+    target,
+    args,
+    cwd: app.getAppPath(),
+    description: 'Планировщик',
+    icon: process.execPath,
+    iconIndex: 0,
+    appUserModelId: 'com.mytasks.app'
+  };
+
+  let ok = false;
+  try {
+    if (fs.existsSync(shortcut)) {
+      ok = shell.writeShortcutLink(shortcut, 'update', details);
+    }
+    if (!ok) {
+      ok = shell.writeShortcutLink(shortcut, 'create', details);
+    }
+    if (!ok && fs.existsSync(shortcut)) {
+      fs.unlinkSync(shortcut);
+      ok = shell.writeShortcutLink(shortcut, 'create', details);
+    }
+
+    // Проверяем, что файл реально создался
+    if (ok && !fs.existsSync(shortcut)) {
+      ok = false;
+    }
+  } catch (_) {
+    ok = false;
+  }
+
+  if (!ok) throw new Error('Не удалось создать ярлык в меню «Пуск»');
+  return true;
+}
+
+module.exports = { getShortcutPath, isEnabled, setEnabled, getStartMenuShortcutPath, isStartMenuShortcutEnabled, setStartMenuShortcut };

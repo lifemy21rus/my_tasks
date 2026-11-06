@@ -24,7 +24,6 @@
     emptyText: $('mini-empty-text'),
     scroll: $('mini-scroll'),
     expand: $('mini-expand'),
-    open: $('mini-open'),
     hide: $('mini-hide'),
     quickInput: $('mini-quick-input'),
     quickAddBtn: $('mini-quick-add'),
@@ -585,7 +584,6 @@
     }
 
     els.expand.addEventListener('click', () => expandApp());
-    els.open.addEventListener('click', () => expandApp());
     els.hide.addEventListener('click', () => api.hideMini());
 
     // Быстрый ввод работает для обеих вкладок: задачи — на «Задачах», заметки — на «Заметках».
