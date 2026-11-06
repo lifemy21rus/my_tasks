@@ -96,6 +96,7 @@
     noteTitleError: $('note-title-error'),
     noteColorPicker: $('note-color-picker'),
     noteSaveBtn: $('note-save-btn'),
+    noteSaveAsTemplateBtn: $('note-save-as-template-btn'),
     noteCancelBtn: $('note-cancel-btn'),
     noteDeleteBtn: $('note-delete-btn'),
     noteModalClose: $('note-modal-close'),
@@ -168,6 +169,23 @@
     // В разделе «Все задачи» заметки показываются только при активном поиске
     if (state.view === 'all' && !hasSearch) {
       els.notesSection.hidden = true;
+      return;
+    }
+
+    // Во «Входящих» показываем заметки вместе с задачами без срока
+    if (state.view === 'inbox') {
+      els.notesSectionHead.hidden = false;
+      els.notesSection.classList.remove('notes-section-full');
+      els.noteList.textContent = '';
+      if (notes.length === 0) {
+        els.notesSection.hidden = true;
+        return;
+      }
+      els.notesSection.hidden = false;
+      els.notesSectionCount.textContent = String(notes.length);
+      const fragment = document.createDocumentFragment();
+      for (const note of notes) fragment.appendChild(renderNoteCard(note));
+      els.noteList.appendChild(fragment);
       return;
     }
 
@@ -484,17 +502,24 @@
   function computeCounts() {
     const now = new Date();
     const tasks = state.data.tasks;
-    const active = tasks.filter((task) => !task.done);
+    const notes = state.data.notes;
+    const activeTasks = tasks.filter((task) => !task.done);
+    const activeNotes = notes.filter((note) => !note.done);
+    const doneTasks = tasks.filter((task) => task.done);
+    const doneNotes = notes.filter((note) => note.done);
+
     return {
-      all: active.length,
-      inbox: active.filter((task) => !task.dueAt).length,
-      today: active.filter((task) => dueMatchesView(task, 'today', now)).length,
-      tomorrow: active.filter((task) => dueMatchesView(task, 'tomorrow', now)).length,
-      overdue: active.filter((task) => dueMatchesView(task, 'overdue', now)).length,
-      soon: active.filter((task) => dueMatchesView(task, 'soon', now)).length,
-      done: tasks.filter((task) => task.done).length,
-      doneActualMinutes: tasks.filter((task) => task.done).reduce((sum, t) => sum + (t.actualMinutes || 0), 0),
-      notes: state.data.notes.length
+      all: activeTasks.length,
+      inbox: state.filter === 'done'
+        ? doneTasks.filter((task) => !task.dueAt).length + doneNotes.length
+        : activeTasks.filter((task) => !task.dueAt).length + activeNotes.length,
+      today: activeTasks.filter((task) => dueMatchesView(task, 'today', now)).length,
+      tomorrow: activeTasks.filter((task) => dueMatchesView(task, 'tomorrow', now)).length,
+      overdue: activeTasks.filter((task) => dueMatchesView(task, 'overdue', now)).length,
+      soon: activeTasks.filter((task) => dueMatchesView(task, 'soon', now)).length,
+      done: doneTasks.length,
+      doneActualMinutes: doneTasks.reduce((sum, t) => sum + (t.actualMinutes || 0), 0),
+      notes: notes.length
     };
   }
 
@@ -671,11 +696,16 @@
     els.viewTitle.textContent = info.title;
 
     const isNotes = state.view === 'notes';
+    const isInbox = state.view === 'inbox';
     const hasSearch = Boolean(state.search.trim());
-    let subtitle = isNotes ? noteCount(visibleNotes().length) : U.taskCount(visible.length);
+
+    const visibleNotesCount = visibleNotes().length;
+    const totalCount = visible.length + visibleNotesCount;
+
+    let subtitle = isNotes ? noteCount(visibleNotesCount) : isInbox ? U.taskCount(totalCount) : U.taskCount(visible.length);
     if (hasSearch) {
-      const taskCount = state.view === 'notes' ? visibleNotes().length : visible.length;
-      const noteCountFound = state.view === 'all' ? visibleNotes().length : 0;
+      const taskCount = isNotes ? visibleNotesCount : visible.length;
+      const noteCountFound = (state.view === 'all' || state.view === 'inbox') ? visibleNotesCount : 0;
       const total = taskCount + noteCountFound;
       subtitle = `Найдено: ${total}`;
     }
@@ -683,6 +713,15 @@
 
     const doneCount = state.data.tasks.filter((task) => task.done).length;
     els.clearCompletedBtn.hidden = doneCount === 0 || isNotes;
+
+    // Фильтры и сортировка не нужны во вкладке «Заметки»
+    if (isNotes) {
+      els.filterGroup.closest('.filters-row').hidden = true;
+      els.sortSelect.closest('.sort-wrap').hidden = true;
+    } else {
+      els.filterGroup.closest('.filters-row').hidden = false;
+      els.sortSelect.closest('.sort-wrap').hidden = false;
+    }
 
     // Фильтр по приоритету относится только к задачам, у заметок его нет
     const prioritySection = els.priorityFilters.closest('.sidebar-section');
@@ -2044,6 +2083,20 @@
 
     // note modal
     els.noteSaveBtn.addEventListener('click', saveNote);
+    els.noteSaveAsTemplateBtn.addEventListener('click', async () => {
+      const title = els.noteTitleInput.value.trim();
+      if (!title) {
+        els.noteTitleError.textContent = 'Введите название заметки';
+        els.noteTitleError.hidden = false;
+        els.noteTitleInput.focus();
+        return;
+      }
+      const res = await invoke(api.addNoteTemplate({ title, content: els.noteContentInput.value }), 'Шаблон заметки сохранён');
+      if (res) {
+        renderNoteTemplates();
+        toast('Шаблон заметки сохранён', 'success');
+      }
+    });
     els.noteCancelBtn.addEventListener('click', closeNoteModal);
     els.noteModalClose.addEventListener('click', closeNoteModal);
     els.noteDeleteBtn.addEventListener('click', () => {
