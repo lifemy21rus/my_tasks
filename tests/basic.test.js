@@ -330,16 +330,19 @@ test('bulk update, delete and toggle many tasks', () => {
   const t3 = store.addTask({ title: 'C', dueAt: new Date(Date.now() + 259200000).toISOString() });
 
   const updated = store.updateManyTasks([t1.id, t2.id], { priority: 'high' });
-  assert.equal(updated.length, 2);
+  assert.equal(updated.results.length, 2);
+  assert.equal(updated.errors.length, 0);
   assert.equal(store.getTasks().find((t) => t.id === t1.id).priority, 'high');
   assert.equal(store.getTasks().find((t) => t.id === t2.id).priority, 'high');
 
   const toggled = store.toggleManyTasks([t1.id, t2.id], true);
-  assert.equal(toggled.length, 2);
+  assert.equal(toggled.results.length, 2);
+  assert.equal(toggled.errors.length, 0);
   assert.equal(store.getTasks().find((t) => t.id === t1.id).done, true);
 
   const removed = store.deleteManyTasks([t3.id]);
-  assert.equal(removed, 1);
+  assert.equal(removed.removed, 1);
+  assert.equal(removed.errors.length, 0);
   assert.equal(store.getTasks().length, 2);
 });
 

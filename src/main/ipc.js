@@ -73,18 +73,18 @@ function registerIpc(deps) {
   });
 
   handle('task:update-many', async (_event, payload) => {
-    const results = store.updateManyTasks(payload.ids || [], payload.patch || {});
-    return ok({ result: results });
+    const result = store.updateManyTasks(payload.ids || [], payload.patch || {});
+    return ok({ result });
   });
 
   handle('task:delete-many', async (_event, payload) => {
-    const removed = store.deleteManyTasks(payload.ids || []);
-    return ok({ result: { removed } });
+    const result = store.deleteManyTasks(payload.ids || []);
+    return ok({ result });
   });
 
   handle('task:toggle-many', async (_event, payload) => {
-    const results = store.toggleManyTasks(payload.ids || [], payload.done);
-    return ok({ result: results });
+    const result = store.toggleManyTasks(payload.ids || [], payload.done);
+    return ok({ result });
   });
 
   handle('subtask:add', async (_event, payload) => {

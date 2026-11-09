@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Установка Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Установка зависимостей
+        run: npm ci
+
+      - name: Линтер (ESLint)
+        run: npm run lint
+
+      - name: Проверка форматирования (Prettier)
+        run: npm run fmt:check
+
+      - name: Тесты (node:test)
+        run: npm test
+
+      - name: E2E-тесты (Playwright)
+        run: npm run e2e
+        env:
+          MYTASKS_DATA_DIR: ${{ runner.temp }}\mytasks-ci

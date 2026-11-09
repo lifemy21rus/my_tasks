@@ -66,7 +66,7 @@ class MiniPanel {
       maximizable: false,
       fullscreenable: false,
       skipTaskbar: true,
-      alwaysOnTop: false,
+      alwaysOnTop: true,
       hasShadow: true,
       title: 'Планировщик',
       icon: this.icon || undefined,
