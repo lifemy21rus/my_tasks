@@ -497,15 +497,6 @@
 
           <div class="field-row">
             <label class="field field-grow">
-              <span class="field-label">Шаблон задачи</span>
-              <select id="task-template-select" class="select select-compact">
-                <option value="">Без шаблона</option>
-              </select>
-            </label>
-          </div>
-
-          <div class="field-row">
-            <label class="field field-grow">
               <span class="field-label">Оценочное время (мин.)</span>
               <input
                 type="number"
@@ -645,9 +636,6 @@
           </button>
           <div class="modal-foot-right">
             <button class="btn btn-ghost" id="task-cancel-btn" type="button">Отмена</button>
-            <button class="btn btn-ghost" id="task-save-as-template-btn" type="button">
-              Сохранить как шаблон
-            </button>
             <button class="btn btn-primary" id="task-save-btn" type="button">Сохранить</button>
           </div>
         </footer>
@@ -1020,12 +1008,6 @@
         </header>
         <div class="modal-body">
           <label class="field">
-            <span class="field-label">Шаблон</span>
-            <select id="note-template-select" class="select select-compact">
-              <option value="">Без шаблона</option>
-            </select>
-          </label>
-          <label class="field">
             <span class="field-label">Название</span>
             <input
               type="text"
@@ -1055,14 +1037,8 @@
           </div>
         </div>
         <footer class="modal-foot">
-          <button class="btn btn-ghost danger-ghost" id="note-delete-btn" type="button" hidden>
-            Удалить
-          </button>
           <div class="modal-foot-right">
             <button class="btn btn-ghost" id="note-cancel-btn" type="button">Отмена</button>
-            <button class="btn btn-ghost" id="note-save-as-template-btn" type="button">
-              Сохранить как шаблон
-            </button>
             <button class="btn btn-primary" id="note-save-btn" type="button">Сохранить</button>
           </div>
         </footer>
@@ -1081,6 +1057,7 @@
     <script src="./modules/hotkeys.js"></script>
     <script src="./modules/reminders.js"></script>
     <script src="./modules/subtasks.js"></script>
+    <script src="./modules/note-modal.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

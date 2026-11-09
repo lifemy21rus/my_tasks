@@ -26,8 +26,6 @@
     priorityFilter: '',
     reminderEditor: [],
     taskColor: null,
-    noteTemplates: [],
-    taskTemplates: [],
     notesArchive: false
   };
 
@@ -55,138 +53,32 @@
     });
   }
 
-  function renderNoteColors() {
-    els.noteColorPicker.textContent = '';
-    for (const color of NOTE_COLORS) {
-      const swatch = document.createElement('button');
-      swatch.type = 'button';
-      swatch.className = `color-swatch${color === state.noteColor ? ' is-active' : ''}`;
-      swatch.style.background = color;
-      swatch.dataset.color = color;
-      swatch.title = color;
-      swatch.setAttribute('aria-label', `Цвет ${color}`);
-      swatch.addEventListener('click', () => {
-        state.noteColor = color;
-        renderNoteColors();
-      });
-      els.noteColorPicker.appendChild(swatch);
-    }
-  }
-
-  async function renderNoteTemplates() {
-    const res = await invoke(api.getNoteTemplates());
-    if (!res) return;
-    const templates = res.result || [];
-    state.noteTemplates = templates;
-    els.noteTemplateSelect.textContent = '<option value="">Без шаблона</option>';
-    for (const template of templates) {
-      const option = document.createElement('option');
-      option.value = template.id;
-      option.textContent = template.title;
-      els.noteTemplateSelect.appendChild(option);
-    }
-    els.noteTemplateSelect.value = '';
-  }
-
-  async function renderTaskTemplates() {
-    const res = await invoke(api.getTaskTemplates());
-    if (!res) return;
-    const templates = res.result || [];
-    state.taskTemplates = templates;
-    els.taskTemplateSelect.textContent = '<option value="">Без шаблона</option>';
-    for (const template of templates) {
-      const option = document.createElement('option');
-      option.value = template.id;
-      option.textContent = template.title;
-      els.taskTemplateSelect.appendChild(option);
-    }
-    els.taskTemplateSelect.value = '';
-  }
-
   function openNoteModal(noteId = null) {
-    const note = noteId ? state.data.notes.find((n) => n.id === noteId) : null;
-    state.editingNoteId = note ? note.id : null;
-    state.noteColor = note && note.color ? note.color : NOTE_COLORS[0];
-
-    els.noteModalTitle.textContent = note ? 'Редактировать заметку' : 'Новая заметка';
-    els.noteTitleInput.value = note ? note.title : '';
-    els.noteContentInput.value = note ? note.content || '' : '';
-    els.noteTitleError.hidden = true;
-    els.noteDeleteBtn.hidden = !note;
-    if (note) {
-      els.noteDeleteBtn.textContent = note.archived ? 'Восстановить' : 'В архив';
-      els.noteDeleteBtn.title = note.archived
-        ? 'Восстановить заметку из архива'
-        : 'Переместить заметку в архив';
-    }
-    renderNoteColors();
-    renderNoteTemplates();
-
-    els.modalBackdrop.hidden = false;
-    els.noteModal.hidden = false;
-    els.taskModal.hidden = true;
-    els.categoryModal.hidden = true;
-    els.settingsModal.hidden = true;
-    els.confirmModal.hidden = true;
-    setTimeout(() => els.noteTitleInput.focus(), 30);
+    return noteModal.openNoteModal(noteId);
   }
 
   function closeNoteModal() {
-    els.noteModal.hidden = true;
-    state.editingNoteId = null;
-    if (
-      els.taskModal.hidden &&
-      els.categoryModal.hidden &&
-      els.settingsModal.hidden &&
-      els.confirmModal.hidden
-    ) {
-      els.modalBackdrop.hidden = true;
-    }
+    return noteModal.closeNoteModal();
   }
 
   async function saveNote() {
-    const title = els.noteTitleInput.value.trim();
-    if (!title) {
-      els.noteTitleError.textContent = 'Введите название заметки';
-      els.noteTitleError.hidden = false;
-      els.noteTitleInput.focus();
-      return;
-    }
-
-    els.noteTitleError.hidden = true;
-    const content = els.noteContentInput.value;
-    const isNew = !state.editingNoteId;
-    const payload = { title, content, color: state.noteColor };
-
-    els.noteSaveBtn.disabled = true;
-    try {
-      const res = isNew
-        ? await invoke(api.addNote(payload), 'Заметка добавлена')
-        : await invoke(api.updateNote(state.editingNoteId, payload), 'Заметка обновлена');
-      if (!res) return;
-
-      closeNoteModal();
-    } finally {
-      els.noteSaveBtn.disabled = false;
-    }
+    return noteModal.saveNote();
   }
 
   async function archiveNoteWithConfirm(noteId) {
+    return noteModal.archiveNoteWithConfirm(noteId);
+  }
+
+  async function deleteNoteWithConfirm(noteId) {
     const note = state.data.notes.find((n) => n.id === noteId);
     if (!note) return;
-    const isArchived = Boolean(note.archived);
     const confirmed = await confirmDialog({
-      title: isArchived ? 'Восстановить заметку?' : 'Переместить в архив?',
-      text: isArchived
-        ? `«${note.title}» будет восстановлена из архива.`
-        : `«${note.title}» будет перемещена в архив. Её можно восстановить в разделе «Архив».`,
-      okText: isArchived ? 'Восстановить' : 'В архив'
+      title: 'Удалить заметку навсегда?',
+      text: `«${note.title}» будет удалена без возможности восстановления.`,
+      okText: 'Удалить'
     });
     if (!confirmed) return;
-    const res = await invoke(
-      isArchived ? api.unarchiveNote(noteId) : api.archiveNote(noteId),
-      isArchived ? 'Заметка восстановлена' : 'Заметка перемещена в архив'
-    );
+    const res = await invoke(api.deleteNote(noteId), 'Заметка удалена');
     if (res && !els.noteModal.hidden) closeNoteModal();
   }
 
@@ -258,13 +150,16 @@
     }
   }
 
+  let noteModal;
+
   const notes = window.AppNotes.create({
     els,
     state,
     visibleNotesFn: visibleNotes,
     makeIconButton,
-    onEditNote: openNoteModal,
-    onArchiveNote: archiveNoteWithConfirm,
+    onEditNote: (id) => noteModal.openNoteModal(id),
+    onArchiveNote: (id) => archiveNoteWithConfirm(id),
+    onDeleteNote: (id) => deleteNoteWithConfirm(id),
     onToggleNote: (id, done) => invoke(api.toggleNote(id, done))
   });
 
@@ -305,6 +200,14 @@
   // Сохраняем ссылку для обратного вызова изменения цвета
   categories._state = state;
 
+  noteModal = window.AppNoteModal.create({
+    els,
+    state,
+    api,
+    invoke,
+    confirmDialog: modals.confirmDialog
+  });
+
   const reminders = window.AppReminders.create({
     els,
     state,
@@ -335,7 +238,6 @@
     currentTask,
     buildRecurrenceFromEditor,
     confirmDialog: modals.confirmDialog,
-    renderTaskTemplates,
     U
   });
 
@@ -1362,36 +1264,6 @@
       if (state.draft && state.draft.id) deleteTaskWithConfirm(state.draft.id);
     });
 
-    els.taskSaveAsTemplateBtn.addEventListener('click', async () => {
-      if (!state.draft) return;
-      const title = els.taskTitleInput.value.trim();
-      if (!title) {
-        els.taskTitleError.textContent = 'Введите название задачи';
-        els.taskTitleError.hidden = false;
-        els.taskTitleInput.focus();
-        return;
-      }
-      const patch = {
-        title,
-        description: els.taskDescInput.value,
-        priority: els.taskPriorityInput.value,
-        categoryId: els.taskCategoryInput.value || null,
-        color: state.taskColor || undefined,
-        estimatedMinutes: Number(els.taskEstimatedMinutes.value) || undefined,
-        actualMinutes: Number(els.taskActualMinutes.value) || undefined,
-        reminders: state.reminderEditor.length > 0 ? [...state.reminderEditor] : null,
-        recurrence: buildRecurrenceFromEditor(),
-        subtasks: state.draft.subtasks
-          .filter((sub) => sub.title.trim())
-          .map((sub) => ({ title: sub.title.trim(), done: sub.done }))
-      };
-      const res = await invoke(api.addTaskTemplate(patch), 'Шаблон задачи сохранён');
-      if (res) {
-        renderTaskTemplates();
-        toast('Шаблон задачи сохранён', 'success');
-      }
-    });
-
     els.taskTitleInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') {
         event.preventDefault();
@@ -1401,28 +1273,8 @@
 
     // note modal
     els.noteSaveBtn.addEventListener('click', saveNote);
-    els.noteSaveAsTemplateBtn.addEventListener('click', async () => {
-      const title = els.noteTitleInput.value.trim();
-      if (!title) {
-        els.noteTitleError.textContent = 'Введите название заметки';
-        els.noteTitleError.hidden = false;
-        els.noteTitleInput.focus();
-        return;
-      }
-      const res = await invoke(
-        api.addNoteTemplate({ title, content: els.noteContentInput.value }),
-        'Шаблон заметки сохранён'
-      );
-      if (res) {
-        renderNoteTemplates();
-        toast('Шаблон заметки сохранён', 'success');
-      }
-    });
     els.noteCancelBtn.addEventListener('click', closeNoteModal);
     els.noteModalClose.addEventListener('click', closeNoteModal);
-    els.noteDeleteBtn.addEventListener('click', () => {
-      if (state.editingNoteId) archiveNoteWithConfirm(state.editingNoteId);
-    });
     els.noteTitleInput.addEventListener('input', () => {
       els.noteTitleError.hidden = true;
     });
@@ -1437,49 +1289,6 @@
         event.preventDefault();
         saveNote();
       }
-    });
-
-    els.noteTemplateSelect.addEventListener('change', () => {
-      const templateId = els.noteTemplateSelect.value;
-      if (!templateId) return;
-      const template = (state.data.templates || []).find((t) => t.id === templateId);
-      if (template) {
-        els.noteTitleInput.value = template.title;
-        els.noteContentInput.value = template.content || '';
-      }
-    });
-
-    els.taskTemplateSelect.addEventListener('change', () => {
-      const templateId = els.taskTemplateSelect.value;
-      if (!templateId || !state.draft) return;
-      const template = (state.taskTemplates || []).find((t) => t.id === templateId);
-      if (!template) return;
-      state.draft.title = template.title || '';
-      state.draft.description = template.description || '';
-      state.draft.priority = template.priority || 'normal';
-      state.draft.color = template.color || null;
-      state.draft.categoryId = template.categoryId || '';
-      state.draft.estimatedMinutes = template.estimatedMinutes || null;
-      state.draft.reminders = template.reminders
-        ? template.reminders.map((r) => ({ offset: r.offset, type: r.type }))
-        : null;
-      state.draft.recurrence = template.recurrence ? { ...template.recurrence } : null;
-      state.draft.subtasks = (template.subtasks || []).map((sub) => ({
-        id: null,
-        title: sub.title,
-        done: false
-      }));
-
-      els.taskTitleInput.value = state.draft.title;
-      els.taskDescInput.value = state.draft.description;
-      els.taskPriorityInput.value = state.draft.priority;
-      els.taskEstimatedMinutes.value = state.draft.estimatedMinutes ?? '';
-      state.taskColor = state.draft.color || null;
-      renderTaskColorGrid();
-      renderDraftSubtasks();
-      updateSubtaskCounter();
-      loadReminderEditor(state.draft);
-      loadRecurrenceEditor(state.draft);
     });
 
     els.quickDue.addEventListener('click', (event) => {

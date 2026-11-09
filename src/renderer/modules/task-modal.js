@@ -39,7 +39,7 @@
       els, state, api, invoke, toast, renderAll,
       renderCategoryOptions, renderDraftSubtasks, updateSubtaskCounter,
       loadReminderEditor, loadRecurrenceEditor, currentTask,
-      buildRecurrenceFromEditor, U, renderTaskTemplates
+      buildRecurrenceFromEditor, U
     } = ctx;
 
     function openTaskModal(taskId, options = {}) {
@@ -113,7 +113,6 @@
 
       state.taskColor = state.draft.color || null;
       renderTaskColorGrid(ctx);
-      renderTaskTemplates();
 
       els.modalBackdrop.hidden = false;
       els.taskModal.hidden = false;

@@ -2,7 +2,7 @@
 
 (function () {
   function createNotesModule(ctx) {
-    const { els, state, visibleNotesFn, makeIconButton, onEditNote, onArchiveNote, onToggleNote } = ctx;
+    const { els, state, visibleNotesFn, makeIconButton, onEditNote, onArchiveNote, onDeleteNote, onToggleNote } = ctx;
 
     function renderNoteCard(note) {
       const card = document.createElement('article');
@@ -48,14 +48,17 @@
       edit.classList.add('small');
       edit.addEventListener('click', () => onEditNote(note.id));
 
+      const isArchived = Boolean(note.archived);
       const remove = makeIconButton(
         'delete-note',
-        note.archived ? 'Восстановить заметку' : 'Переместить в архив',
+        isArchived ? 'Удалить заметку навсегда' : 'Переместить в архив',
         'trash',
         'danger'
       );
       remove.classList.add('small');
-      remove.addEventListener('click', () => onArchiveNote(note.id));
+      remove.addEventListener('click', () =>
+        isArchived ? onDeleteNote(note.id) : onArchiveNote(note.id)
+      );
 
       actions.append(edit, remove);
       main.append(check, body, actions);
