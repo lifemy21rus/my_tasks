@@ -173,7 +173,10 @@
       const subsToggle = document.createElement('button');
       subsToggle.className = 'mini-subs-toggle' + (state.expanded.has(task.id) ? ' is-open' : '');
       subsToggle.type = 'button';
-      subsToggle.setAttribute('aria-label', state.expanded.has(task.id) ? 'Скрыть подзадачи' : 'Показать подзадачи');
+      subsToggle.setAttribute(
+        'aria-label',
+        state.expanded.has(task.id) ? 'Скрыть подзадачи' : 'Показать подзадачи'
+      );
       subsToggle.textContent = state.expanded.has(task.id) ? '▾' : '▸';
       subsToggle.addEventListener('click', (event) => {
         event.preventDefault();
@@ -244,7 +247,7 @@
   }
 
   function allNotes() {
-    return state.data.notes || [];
+    return (state.data.notes || []).filter((note) => !note.archived);
   }
 
   function renderNote(note) {
@@ -325,6 +328,20 @@
 
   function render() {
     els.date.textContent = formatDateLabel();
+
+    const settings = state.data.settings || {};
+    const tabsMode = settings.miniPanelTabs || 'both';
+
+    if (tabsMode === 'tasks') {
+      els.tabNotes.hidden = true;
+      if (state.tab === 'notes') state.tab = 'tasks';
+    } else if (tabsMode === 'notes') {
+      els.tabTasks.hidden = true;
+      if (state.tab === 'tasks') state.tab = 'notes';
+    } else {
+      els.tabNotes.hidden = false;
+      els.tabTasks.hidden = false;
+    }
 
     const tasks = allTasks();
     const notes = allNotes();
@@ -515,7 +532,7 @@
         if (subCheck) {
           const taskId = subCheck.dataset.taskId;
           const subtaskId = subCheck.dataset.subtaskId;
-          toggleSubtask(taskId, subtaskId, !(subCheck.checked));
+          toggleSubtask(taskId, subtaskId, !subCheck.checked);
         }
         return;
       }
@@ -592,9 +609,14 @@
       if (!value) return;
       const isNotes = state.tab === 'notes';
       try {
-        const res = isNotes ? await api.addNote({ title: value }) : await api.addTask({ title: value });
+        const res = isNotes
+          ? await api.addNote({ title: value })
+          : await api.addTask({ title: value });
         if (!res || !res.ok) {
-          showError((res && res.error) || (isNotes ? 'Не удалось добавить заметку' : 'Не удалось добавить задачу'));
+          showError(
+            (res && res.error) ||
+              (isNotes ? 'Не удалось добавить заметку' : 'Не удалось добавить задачу')
+          );
           return;
         }
         els.quickInput.value = '';

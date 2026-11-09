@@ -24,7 +24,8 @@
     reminderEditor: [],
     taskColor: null,
     noteTemplates: [],
-    taskTemplates: []
+    taskTemplates: [],
+    notesArchive: false
   };
 
   const $ = (id) => document.getElementById(id);
@@ -89,6 +90,9 @@
     notesSectionHead: $('notes-section-head'),
     notesSectionCount: $('notes-section-count'),
     notesSectionAddBtn: $('notes-section-add-btn'),
+    notesViewActive: $('notes-view-active'),
+    notesViewArchived: $('notes-view-archived'),
+    notesRow: $('topbar-notes-row'),
     noteModal: $('note-modal'),
     noteModalTitle: $('note-modal-title'),
     noteTitleInput: $('note-title-input'),
@@ -116,7 +120,7 @@
     categorySaveBtn: $('category-save-btn'),
     categoryCancelBtn: $('category-cancel-btn'),
     categoryModalClose: $('category-modal-close'),
-    priorityFilters: $('priority-filters'),
+    priorityFilter: $('priority-filter'),
     dueFilterSelect: $('due-filter'),
     settingsModal: $('settings-modal'),
     settingsDoneBtn: $('settings-done-btn'),
@@ -125,6 +129,9 @@
     settingStartMinimized: $('setting-start-minimized'),
     settingStartMenuShortcut: $('setting-start-menu-shortcut'),
     settingMiniPanel: $('setting-mini-panel'),
+    settingMiniPanelAtStart: $('setting-mini-panel-at-start'),
+    settingMiniPanelTabs: $('setting-mini-panel-tabs'),
+    settingDataEncryption: $('setting-data-encryption'),
     settingQuitOnClose: $('setting-quit-on-close'),
     settingDefaultRemind: $('setting-default-remind'),
     settingRemindAtDue: $('setting-remind-at-due'),
@@ -158,10 +165,14 @@
 
   function visibleNotes() {
     const query = state.search.trim().toLowerCase();
-    if (!query) return state.data.notes;
     return state.data.notes.filter((note) => {
-      return note.title.toLowerCase().includes(query)
-        || (note.content || '').toLowerCase().includes(query);
+      if (state.notesArchive && !note.archived) return false;
+      if (!state.notesArchive && note.archived) return false;
+      if (!query) return true;
+      return (
+        note.title.toLowerCase().includes(query) ||
+        (note.content || '').toLowerCase().includes(query)
+      );
     });
   }
 
@@ -258,9 +269,15 @@
 
     els.noteModalTitle.textContent = note ? 'Редактировать заметку' : 'Новая заметка';
     els.noteTitleInput.value = note ? note.title : '';
-    els.noteContentInput.value = note ? (note.content || '') : '';
+    els.noteContentInput.value = note ? note.content || '' : '';
     els.noteTitleError.hidden = true;
     els.noteDeleteBtn.hidden = !note;
+    if (note) {
+      els.noteDeleteBtn.textContent = note.archived ? 'Восстановить' : 'В архив';
+      els.noteDeleteBtn.title = note.archived
+        ? 'Восстановить заметку из архива'
+        : 'Переместить заметку в архив';
+    }
     renderNoteColors();
     renderNoteTemplates();
 
@@ -313,16 +330,22 @@
     }
   }
 
-  async function deleteNoteWithConfirm(noteId) {
+  async function archiveNoteWithConfirm(noteId) {
     const note = state.data.notes.find((n) => n.id === noteId);
     if (!note) return;
+    const isArchived = Boolean(note.archived);
     const confirmed = await confirmDialog({
-      title: 'Удалить заметку?',
-      text: `«${note.title}» будет удалена без возможности отменить действие.`,
-      okText: 'Удалить'
+      title: isArchived ? 'Восстановить заметку?' : 'Переместить в архив?',
+      text: isArchived
+        ? `«${note.title}» будет восстановлена из архива.`
+        : `«${note.title}» будет перемещена в архив. Её можно восстановить в разделе «Архив».`,
+      okText: isArchived ? 'Восстановить' : 'В архив'
     });
     if (!confirmed) return;
-    const res = await invoke(api.deleteNote(noteId), 'Заметка удалена');
+    const res = await invoke(
+      isArchived ? api.unarchiveNote(noteId) : api.archiveNote(noteId),
+      isArchived ? 'Заметка восстановлена' : 'Заметка перемещена в архив'
+    );
     if (res && !els.noteModal.hidden) closeNoteModal();
   }
 
@@ -368,10 +391,13 @@
     text.textContent = message;
     node.append(dot, text);
     els.toastStack.appendChild(node);
-    setTimeout(() => {
-      node.classList.add('is-leaving');
-      setTimeout(() => node.remove(), 200);
-    }, type === 'error' ? 4800 : 2800);
+    setTimeout(
+      () => {
+        node.classList.add('is-leaving');
+        setTimeout(() => node.remove(), 200);
+      },
+      type === 'error' ? 4800 : 2800
+    );
   }
 
   function applyState(res) {
@@ -411,7 +437,8 @@
     if (view === 'today') return U.isSameDay(dueDate, now);
     if (view === 'tomorrow') return U.isSameDay(dueDate, U.addDays(now, 1));
     if (view === 'overdue') return due < now.getTime();
-    if (view === 'soon') return due >= now.getTime() && due - now.getTime() <= 7 * 24 * 60 * 60 * 1000;
+    if (view === 'soon')
+      return due >= now.getTime() && due - now.getTime() <= 7 * 24 * 60 * 60 * 1000;
     return false;
   }
 
@@ -439,9 +466,11 @@
     const query = state.search.trim().toLowerCase();
     if (query) {
       list = list.filter((task) => {
-        return task.title.toLowerCase().includes(query)
-          || (task.description || '').toLowerCase().includes(query)
-          || (task.subtasks || []).some((sub) => sub.title.toLowerCase().includes(query));
+        return (
+          task.title.toLowerCase().includes(query) ||
+          (task.description || '').toLowerCase().includes(query) ||
+          (task.subtasks || []).some((sub) => sub.title.toLowerCase().includes(query))
+        );
       });
     }
 
@@ -501,8 +530,10 @@
       overdue: active.filter((task) => dueMatchesView(task, 'overdue', now)).length,
       soon: active.filter((task) => dueMatchesView(task, 'soon', now)).length,
       done: tasks.filter((task) => task.done).length,
-      doneActualMinutes: tasks.filter((task) => task.done).reduce((sum, t) => sum + (t.actualMinutes || 0), 0),
-      notes: state.data.notes.length
+      doneActualMinutes: tasks
+        .filter((task) => task.done)
+        .reduce((sum, t) => sum + (t.actualMinutes || 0), 0),
+      notes: state.data.notes.filter((note) => !note.archived).length
     };
   }
 
@@ -552,9 +583,9 @@
     edit.classList.add('small');
     edit.addEventListener('click', () => openNoteModal(note.id));
 
-    const remove = makeIconButton('delete-note', 'Удалить заметку', 'trash', 'danger');
+    const remove = makeIconButton('delete-note', note.archived ? 'Восстановить заметку' : 'Переместить в архив', 'trash', 'danger');
     remove.classList.add('small');
-    remove.addEventListener('click', () => deleteNoteWithConfirm(note.id));
+    remove.addEventListener('click', () => archiveNoteWithConfirm(note.id));
 
     actions.append(edit, remove);
     main.append(check, body, actions);
@@ -652,7 +683,8 @@
       edit.dataset.categoryId = category.id;
       edit.title = 'Изменить категорию';
       edit.setAttribute('aria-label', `Изменить категорию ${category.name}`);
-      edit.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+      edit.innerHTML =
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
 
       row.append(pick, edit);
       els.categoryList.appendChild(row);
@@ -694,9 +726,9 @@
 
     let subtitle = isNotes ? noteCount(visibleNotes().length) : U.taskCount(visible.length);
     if (hasSearch) {
-      const taskCount = isNotes ? visibleNotes().length : visible.length;
-      const noteCountFound = state.view === 'all' ? visibleNotes().length : 0;
-      const total = taskCount + noteCountFound;
+      const taskCount = visible.length;
+      const noteCountFound = visibleNotes().length;
+      const total = isNotes ? noteCountFound : taskCount;
       subtitle = `Найдено: ${total}`;
     }
     els.viewSub.textContent = subtitle;
@@ -708,19 +740,26 @@
     if (isNotes) {
       els.filterGroup.closest('.filters-row').hidden = true;
       els.sortSelect.closest('.sort-wrap').hidden = true;
+      els.notesRow.hidden = false;
+      els.notesViewActive.classList.toggle('is-active', !state.notesArchive);
+      els.notesViewArchived.classList.toggle('is-active', state.notesArchive);
+      els.notesSectionAddBtn.hidden = true;
     } else {
+      els.filterGroup.closest('.filters-row').hidden = false;
+      els.sortSelect.closest('.sort-wrap').hidden = false;
+      els.notesRow.hidden = true;
       els.filterGroup.closest('.filters-row').hidden = false;
       els.sortSelect.closest('.sort-wrap').hidden = false;
     }
 
     // Фильтр по приоритету относится только к задачам, у заметок его нет
-    const prioritySection = els.priorityFilters.closest('.sidebar-section');
+    const prioritySection = els.priorityFilter.closest('.sidebar-section');
     if (prioritySection) {
       prioritySection.hidden = isNotes;
     }
 
     els.searchInput.value = state.search;
-    els.searchInput.placeholder = isNotes ? 'Поиск заметок…' : 'Поиск задач и заметок…';
+    els.searchInput.placeholder = isNotes ? 'Поиск заметок…' : 'Поиск задач…';
     els.searchInput.closest('.search-wrap').classList.toggle('has-value', Boolean(state.search));
   }
 
@@ -734,10 +773,7 @@
   }
 
   function syncPriorityFilters() {
-    const active = state.priorityFilter || '';
-    $$('.filter-pill', els.priorityFilters).forEach((pill) => {
-      pill.classList.toggle('is-active', (pill.dataset.priority || '') === active);
-    });
+    els.priorityFilter.value = state.priorityFilter || '';
   }
 
   function syncDueFilter() {
@@ -763,9 +799,8 @@
     els.taskList.hidden = false;
     els.emptyAddBtn.textContent = 'Добавить задачу';
 
-    const tasksOnlyEmpty = state.view === 'all'
-      ? tasks.length === 0
-      : tasks.length === 0 && visibleNotes().length === 0;
+    const tasksOnlyEmpty =
+      state.view === 'all' ? tasks.length === 0 : tasks.length === 0 && visibleNotes().length === 0;
     if (tasksOnlyEmpty) {
       els.emptyState.hidden = false;
       els.emptyAddBtn.hidden = Boolean(state.search.trim());
@@ -799,7 +834,8 @@
     }
     if (state.view === 'notes') {
       els.emptyTitle.textContent = 'Заметок пока нет';
-      els.emptyText.textContent = 'Нажмите «Заметка», чтобы сохранить первую мысль или напоминание.';
+      els.emptyText.textContent =
+        'Нажмите «Заметка», чтобы сохранить первую мысль или напоминание.';
       return;
     }
     if (state.view === 'done') {
@@ -973,7 +1009,8 @@
     const icons = {
       clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 1.7"/>',
       pencil: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
-      trash: '<path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M10 11v5M14 11v5"/>',
+      trash:
+        '<path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M10 11v5M14 11v5"/>',
       plus: '<path d="M12 5v14M5 12h14"/>',
       x: '<path d="M6 6l12 12M18 6L6 18"/>'
     };
@@ -1077,7 +1114,9 @@
       : registered
         ? `Горячая клавиша: ${formatHotkey(settings.hotkey)}`
         : 'Не удалось зарегистрировать горячую клавишу';
-    els.hotkeyHint.textContent = enabled ? formatHotkey(settings.hotkey) : 'Горячая клавиша отключена';
+    els.hotkeyHint.textContent = enabled
+      ? formatHotkey(settings.hotkey)
+      : 'Горячая клавиша отключена';
 
     if (state.view === 'notes') {
       els.statusLeft.textContent = noteCount(visibleNotes().length);
@@ -1086,9 +1125,7 @@
 
     const visibleCount = getVisibleTasks().length;
     const total = state.data.tasks.length;
-    let text = total === visibleCount
-      ? U.taskCount(total)
-      : `Показано ${visibleCount} из ${total}`;
+    let text = total === visibleCount ? U.taskCount(total) : `Показано ${visibleCount} из ${total}`;
     if (state.view === 'notes') {
       const notesCount = state.data.notes.length;
       if (notesCount > 0) {
@@ -1144,7 +1181,9 @@
         categoryId: task.categoryId || '',
         estimatedMinutes: task.estimatedMinutes || null,
         actualMinutes: task.actualMinutes || null,
-        reminders: task.reminders ? task.reminders.map((r) => ({ offset: r.offset, type: r.type })) : null,
+        reminders: task.reminders
+          ? task.reminders.map((r) => ({ offset: r.offset, type: r.type }))
+          : null,
         recurrence: task.recurrence ? { ...task.recurrence } : null,
         subtasks: (task.subtasks || []).map(mapDraftSubtask)
       };
@@ -1221,7 +1260,16 @@
   }
 
   function renderTaskColorGrid() {
-    const TASK_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6'];
+    const TASK_COLORS = [
+      '#ef4444',
+      '#f97316',
+      '#f59e0b',
+      '#84cc16',
+      '#22c55e',
+      '#06b6d4',
+      '#3b82f6',
+      '#8b5cf6'
+    ];
     els.taskColorGrid.textContent = '';
     for (const color of TASK_COLORS) {
       const swatch = document.createElement('button');
@@ -1335,7 +1383,7 @@
     const value = els.subtaskInput.value.trim();
     if (!value || !state.draft) return;
     const target = state.draftSubtaskAddTarget
-      ? (state.draftSubtaskAddTarget.subtasks || (state.draftSubtaskAddTarget.subtasks = []))
+      ? state.draftSubtaskAddTarget.subtasks || (state.draftSubtaskAddTarget.subtasks = [])
       : state.draft.subtasks;
     target.push({ id: null, title: value, done: false, subtasks: [] });
     state.draftSubtaskAddTarget = null;
@@ -1395,10 +1443,14 @@
           .map((sub) => ({
             title: sub.title.trim(),
             done: Boolean(sub.done),
-            subtasks: Array.isArray(sub.subtasks) ? sub.subtasks.filter((s) => s.title.trim()).map((s) => ({
-              title: s.title.trim(),
-              done: Boolean(s.done)
-            })) : []
+            subtasks: Array.isArray(sub.subtasks)
+              ? sub.subtasks
+                  .filter((s) => s.title.trim())
+                  .map((s) => ({
+                    title: s.title.trim(),
+                    done: Boolean(s.done)
+                  }))
+              : []
           }));
         const res = await invoke(api.addTask({ ...patch, subtasks }), 'Задача добавлена');
         if (!res) return;
@@ -1418,7 +1470,7 @@
         if (!draftIds.has(id)) await api.deleteSubtask(draft.id, id);
       }
 
-      for (const sub of (draft.subtasks || [])) {
+      for (const sub of draft.subtasks || []) {
         if (!sub.title.trim()) continue;
         if (sub.id) {
           const before = original.find((item) => item.id === sub.id);
@@ -1526,7 +1578,10 @@
     }
 
     if (draft.id) {
-      const res = await invoke(api.updateCategory(draft.id, { name, color: draft.color }), 'Категория обновлена');
+      const res = await invoke(
+        api.updateCategory(draft.id, { name, color: draft.color }),
+        'Категория обновлена'
+      );
       if (res) closeCategoryModal();
     } else {
       const res = await invoke(api.addCategory({ name, color: draft.color }), 'Категория создана');
@@ -1576,6 +1631,9 @@
     els.settingStartMinimized.checked = Boolean(settings.startMinimized);
     els.settingStartMenuShortcut.checked = Boolean(settings.startMenuShortcut);
     els.settingMiniPanel.checked = Boolean(settings.miniPanel);
+    els.settingMiniPanelAtStart.checked = Boolean(settings.miniPanelAtStart);
+    els.settingMiniPanelTabs.value = settings.miniPanelTabs || 'both';
+    els.settingDataEncryption.checked = Boolean(settings.dataEncryption);
     els.settingQuitOnClose.checked = Boolean(settings.quitOnClose);
     els.settingDefaultRemind.value = String(settings.defaultRemindBefore);
     els.settingRemindAtDue.checked = Boolean(settings.defaultRemindAtDue);
@@ -1600,7 +1658,10 @@
       renderHotkeyStatus();
       if (res.runtime && Object.prototype.hasOwnProperty.call(res.runtime, 'hotkeyRegistered')) {
         if (state.data.settings.hotkeyEnabled && !res.runtime.hotkeyRegistered) {
-          toast('Не удалось зарегистрировать горячую клавишу — возможно, она занята другой программой.', 'error');
+          toast(
+            'Не удалось зарегистрировать горячую клавишу — возможно, она занята другой программой.',
+            'error'
+          );
         }
       }
     }
@@ -1756,7 +1817,10 @@
       item.textContent = option.label;
       item.addEventListener('click', async () => {
         closeSnoozeMenu();
-        await invoke(api.snoozeTask(taskId, option.until.toISOString()), `Напоминание отложено: ${option.label.toLowerCase()}`);
+        await invoke(
+          api.snoozeTask(taskId, option.until.toISOString()),
+          `Напоминание отложено: ${option.label.toLowerCase()}`
+        );
       });
       menu.appendChild(item);
     }
@@ -1839,7 +1903,10 @@
 
   function loadReminderEditor(task) {
     if (task && Array.isArray(task.reminders) && task.reminders.length > 0) {
-      state.reminderEditor = task.reminders.map((r) => ({ offset: Number(r.offset) || 0, type: r.type }));
+      state.reminderEditor = task.reminders.map((r) => ({
+        offset: Number(r.offset) || 0,
+        type: r.type
+      }));
     } else {
       // По умолчанию: за 1 час + в момент срока (как было раньше)
       state.reminderEditor = [
@@ -1941,11 +2008,8 @@
       renderAll();
     });
 
-    els.priorityFilters.addEventListener('click', (event) => {
-      const pill = event.target.closest('.filter-pill');
-      if (!pill) return;
-      $$('.filter-pill').forEach((p) => p.classList.toggle('is-active', p === pill));
-      state.priorityFilter = pill.dataset.priority || '';
+    els.priorityFilter.addEventListener('change', () => {
+      state.priorityFilter = els.priorityFilter.value;
       renderTaskList();
     });
 
@@ -1969,6 +2033,15 @@
     els.newTaskBtn.addEventListener('click', () => openTaskModal(null));
     els.newNoteBtn.addEventListener('click', () => openNoteModal());
     els.notesSectionAddBtn.addEventListener('click', () => openNoteModal());
+
+    els.notesViewActive.addEventListener('click', () => {
+      state.notesArchive = false;
+      renderAll();
+    });
+    els.notesViewArchived.addEventListener('click', () => {
+      state.notesArchive = true;
+      renderAll();
+    });
     els.emptyAddBtn.addEventListener('click', () => {
       if (state.view === 'notes') openNoteModal();
       else openTaskModal(null);
@@ -1998,7 +2071,13 @@
         if (card) toggleTask(card.dataset.id, target.checked);
       } else if (target.dataset.action === 'toggle-subtask') {
         const card = target.closest('.task-card');
-        if (card) toggleSubtask(card.dataset.id, target.dataset.subtaskId, target.checked, target.dataset.parentSubtaskId || null);
+        if (card)
+          toggleSubtask(
+            card.dataset.id,
+            target.dataset.subtaskId,
+            target.checked,
+            target.dataset.parentSubtaskId || null
+          );
       }
     });
 
@@ -2019,7 +2098,11 @@
           else state.expanded.add(taskId);
           renderTaskList();
         } else if (action === 'edit-subtask') {
-          startInlineSubtaskEdit(card, button.dataset.subtaskId, button.dataset.parentSubtaskId || null);
+          startInlineSubtaskEdit(
+            card,
+            button.dataset.subtaskId,
+            button.dataset.parentSubtaskId || null
+          );
         } else if (action === 'delete-subtask') {
           deleteSubtask(taskId, button.dataset.subtaskId, button.dataset.parentSubtaskId || null);
         } else if (action === 'add-sub-subtask') {
@@ -2033,7 +2116,10 @@
           input.focus();
           input.addEventListener('blur', () => {
             if (input.value.trim()) {
-              invoke(api.addSubtask(card.dataset.id, input.value.trim(), parentSubtaskId), 'Подзадача добавлена');
+              invoke(
+                api.addSubtask(card.dataset.id, input.value.trim(), parentSubtaskId),
+                'Подзадача добавлена'
+              );
             }
             button = makeIconButton('add-sub-subtask', 'Добавить подзадачу', 'plus');
             button.dataset.subtaskId = parentSubtaskId;
@@ -2048,7 +2134,10 @@
             if (e.key === 'Enter') {
               e.preventDefault();
               if (input.value.trim()) {
-                invoke(api.addSubtask(card.dataset.id, input.value.trim(), parentSubtaskId), 'Подзадача добавлена');
+                invoke(
+                  api.addSubtask(card.dataset.id, input.value.trim(), parentSubtaskId),
+                  'Подзадача добавлена'
+                );
               }
               const newBtn = makeIconButton('add-sub-subtask', 'Добавить подзадачу', 'plus');
               newBtn.dataset.subtaskId = parentSubtaskId;
@@ -2076,11 +2165,11 @@
 
       // клик по телу карточки/заголовку — переключаем выполнение задачи
       const checkbox = card.querySelector('.task-check');
-        if (checkbox) {
-          //# Задача больше не переключается при клике по телу карточки/заголовку.
-          //# Отмечать выполнение можно только галочкой (через событие change).
-          return;
-        }
+      if (checkbox) {
+        //# Задача больше не переключается при клике по телу карточки/заголовку.
+        //# Отмечать выполнение можно только галочкой (через событие change).
+        return;
+      }
     });
 
     els.taskList.addEventListener('submit', (event) => {
@@ -2091,7 +2180,10 @@
       const input = form.querySelector('input');
       const value = input.value.trim();
       if (!card || !value) return;
-      invoke(api.addSubtask(card.dataset.id, value, form.dataset.parentSubtaskId || null), 'Подзадача добавлена');
+      invoke(
+        api.addSubtask(card.dataset.id, value, form.dataset.parentSubtaskId || null),
+        'Подзадача добавлена'
+      );
     });
 
     // task modal
@@ -2149,7 +2241,10 @@
         els.noteTitleInput.focus();
         return;
       }
-      const res = await invoke(api.addNoteTemplate({ title, content: els.noteContentInput.value }), 'Шаблон заметки сохранён');
+      const res = await invoke(
+        api.addNoteTemplate({ title, content: els.noteContentInput.value }),
+        'Шаблон заметки сохранён'
+      );
       if (res) {
         renderNoteTemplates();
         toast('Шаблон заметки сохранён', 'success');
@@ -2158,7 +2253,7 @@
     els.noteCancelBtn.addEventListener('click', closeNoteModal);
     els.noteModalClose.addEventListener('click', closeNoteModal);
     els.noteDeleteBtn.addEventListener('click', () => {
-      if (editingNoteId) deleteNoteWithConfirm(editingNoteId);
+      if (editingNoteId) archiveNoteWithConfirm(editingNoteId);
     });
     els.noteTitleInput.addEventListener('input', () => {
       els.noteTitleError.hidden = true;
@@ -2197,7 +2292,9 @@
       state.draft.color = template.color || null;
       state.draft.categoryId = template.categoryId || '';
       state.draft.estimatedMinutes = template.estimatedMinutes || null;
-      state.draft.reminders = template.reminders ? template.reminders.map((r) => ({ offset: r.offset, type: r.type })) : null;
+      state.draft.reminders = template.reminders
+        ? template.reminders.map((r) => ({ offset: r.offset, type: r.type }))
+        : null;
       state.draft.recurrence = template.recurrence ? { ...template.recurrence } : null;
       state.draft.subtasks = (template.subtasks || []).map((sub) => ({
         id: null,
@@ -2282,6 +2379,15 @@
     els.settingMiniPanel.addEventListener('change', () => {
       updateSetting({ miniPanel: els.settingMiniPanel.checked });
     });
+    els.settingMiniPanelAtStart.addEventListener('change', () => {
+      updateSetting({ miniPanelAtStart: els.settingMiniPanelAtStart.checked });
+    });
+    els.settingMiniPanelTabs.addEventListener('change', () => {
+      updateSetting({ miniPanelTabs: els.settingMiniPanelTabs.value });
+    });
+    els.settingDataEncryption.addEventListener('change', () => {
+      updateSetting({ dataEncryption: els.settingDataEncryption.checked });
+    });
     els.settingQuitOnClose.addEventListener('change', () => {
       updateSetting({ quitOnClose: els.settingQuitOnClose.checked });
     });
@@ -2326,7 +2432,10 @@
       const res = await invoke(api.importData());
       if (res && res.result && !res.result.canceled) {
         const notesPart = Number.isFinite(res.result.notes) ? `, ${res.result.notes} заметок` : '';
-        toast(`Импортировано: ${res.result.tasks} задач, ${res.result.categories} категорий${notesPart}`, 'success');
+        toast(
+          `Импортировано: ${res.result.tasks} задач, ${res.result.categories} категорий${notesPart}`,
+          'success'
+        );
       }
     });
 
@@ -2351,12 +2460,18 @@
         if (res && res.result && res.result.checking) {
           els.updateStatusNote.textContent = 'Проверка завершена. Обновлений не найдено.';
           els.updateStatusNote.hidden = false;
-          setTimeout(() => { els.updateStatusNote.hidden = true; els.checkUpdatesBtn.hidden = false; }, 3000);
+          setTimeout(() => {
+            els.updateStatusNote.hidden = true;
+            els.checkUpdatesBtn.hidden = false;
+          }, 3000);
         }
       } catch (err) {
         els.updateStatusNote.textContent = 'Ошибка проверки обновлений.';
         els.updateStatusNote.hidden = false;
-        setTimeout(() => { els.updateStatusNote.hidden = true; els.checkUpdatesBtn.hidden = false; }, 3000);
+        setTimeout(() => {
+          els.updateStatusNote.hidden = true;
+          els.checkUpdatesBtn.hidden = false;
+        }, 3000);
       }
     });
 
@@ -2380,7 +2495,11 @@
     });
 
     document.addEventListener('mousedown', (event) => {
-      if (snoozeMenu && !event.target.closest('.snooze-menu') && !event.target.closest('[data-action="snooze"]')) {
+      if (
+        snoozeMenu &&
+        !event.target.closest('.snooze-menu') &&
+        !event.target.closest('[data-action="snooze"]')
+      ) {
         closeSnoozeMenu();
       }
     });
@@ -2410,12 +2529,21 @@
         if (!modalOpen) els.searchInput.focus();
         return;
       }
-      if (modalOpen && !els.taskModal.hidden && (event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      if (
+        modalOpen &&
+        !els.taskModal.hidden &&
+        (event.ctrlKey || event.metaKey) &&
+        event.key === 'Enter'
+      ) {
         event.preventDefault();
         saveTask();
         return;
       }
-      if (event.key === 'Enter' && document.activeElement === els.subtaskInput && !els.taskModal.hidden) {
+      if (
+        event.key === 'Enter' &&
+        document.activeElement === els.subtaskInput &&
+        !els.taskModal.hidden
+      ) {
         event.preventDefault();
         addDraftSubtask();
       }
@@ -2499,7 +2627,9 @@
     const subtask = findSubtaskInTask(task, subtaskId);
     if (!subtask) return;
 
-    const row = card.querySelector(`[data-action="toggle-subtask"][data-subtask-id="${subtaskId}"]`);
+    const row = card.querySelector(
+      `[data-action="toggle-subtask"][data-subtask-id="${subtaskId}"]`
+    );
     if (!row) return;
     const rowEl = row.closest('.subtask-row');
     if (!rowEl) return;
@@ -2520,7 +2650,10 @@
     const finish = async (save) => {
       const value = input.value.trim();
       if (save && value && value !== subtask.title) {
-        await invoke(api.updateSubtask(card.dataset.id, subtaskId, { title: value }, parentSubtaskId), 'Подзадача обновлена');
+        await invoke(
+          api.updateSubtask(card.dataset.id, subtaskId, { title: value }, parentSubtaskId),
+          'Подзадача обновлена'
+        );
       } else {
         renderTaskList();
       }

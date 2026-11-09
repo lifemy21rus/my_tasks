@@ -20,10 +20,14 @@ contextBridge.exposeInMainWorld('api', {
   deleteManyTasks: (ids) => ipcRenderer.invoke('task:delete-many', { ids }),
   toggleManyTasks: (ids, done) => ipcRenderer.invoke('task:toggle-many', { ids, done }),
 
-  addSubtask: (taskId, title, parentSubtaskId) => ipcRenderer.invoke('subtask:add', { taskId, title, parentSubtaskId }),
-  updateSubtask: (taskId, subtaskId, patch, parentSubtaskId) => ipcRenderer.invoke('subtask:update', { taskId, subtaskId, patch, parentSubtaskId }),
-  deleteSubtask: (taskId, subtaskId, parentSubtaskId) => ipcRenderer.invoke('subtask:delete', { taskId, subtaskId, parentSubtaskId }),
-  toggleSubtask: (taskId, subtaskId, done, parentSubtaskId) => ipcRenderer.invoke('subtask:toggle', { taskId, subtaskId, done, parentSubtaskId }),
+  addSubtask: (taskId, title, parentSubtaskId) =>
+    ipcRenderer.invoke('subtask:add', { taskId, title, parentSubtaskId }),
+  updateSubtask: (taskId, subtaskId, patch, parentSubtaskId) =>
+    ipcRenderer.invoke('subtask:update', { taskId, subtaskId, patch, parentSubtaskId }),
+  deleteSubtask: (taskId, subtaskId, parentSubtaskId) =>
+    ipcRenderer.invoke('subtask:delete', { taskId, subtaskId, parentSubtaskId }),
+  toggleSubtask: (taskId, subtaskId, done, parentSubtaskId) =>
+    ipcRenderer.invoke('subtask:toggle', { taskId, subtaskId, done, parentSubtaskId }),
 
   addCategory: (input) => ipcRenderer.invoke('category:add', input),
   updateCategory: (id, patch) => ipcRenderer.invoke('category:update', { id, patch }),
@@ -33,6 +37,8 @@ contextBridge.exposeInMainWorld('api', {
   updateNote: (id, patch) => ipcRenderer.invoke('note:update', { id, patch }),
   deleteNote: (id) => ipcRenderer.invoke('note:delete', id),
   toggleNote: (id, done) => ipcRenderer.invoke('note:toggle', { id, done }),
+  archiveNote: (id) => ipcRenderer.invoke('note:archive', { id }),
+  unarchiveNote: (id) => ipcRenderer.invoke('note:unarchive', { id }),
 
   getNoteTemplates: () => ipcRenderer.invoke('note-templates:get'),
   addNoteTemplate: (input) => ipcRenderer.invoke('note-templates:add', input),

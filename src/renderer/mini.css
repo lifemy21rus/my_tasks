@@ -22,10 +22,10 @@
   --radius: 10px;
   --radius-sm: 8px;
   --shadow: 0 10px 30px rgba(15, 23, 42, 0.14);
-  --font: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
 }
 
-html[data-theme="dark"] {
+html[data-theme='dark'] {
   color-scheme: dark;
   --bg: #0b1120;
   --panel: #121c2f;
@@ -49,12 +49,12 @@ html[data-theme="dark"] {
   --shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
 }
 
-html[data-theme="system"] {
+html[data-theme='system'] {
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
-  html[data-theme="system"] {
+  html[data-theme='system'] {
     color-scheme: dark;
     --bg: #0b1120;
     --panel: #121c2f;
@@ -210,7 +210,6 @@ button {
 }
 
 .mini-icon-btn:focus-visible,
-
 .mini-check:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
@@ -237,7 +236,10 @@ button {
   color: var(--text-muted);
   font-size: 11.5px;
   font-weight: 600;
-  transition: background 110ms ease, color 110ms ease, border-color 110ms ease;
+  transition:
+    background 110ms ease,
+    color 110ms ease,
+    border-color 110ms ease;
 }
 
 .mini-tab:hover {
@@ -354,7 +356,9 @@ button {
   background: var(--panel);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 110ms ease, border-color 110ms ease;
+  transition:
+    background 110ms ease,
+    border-color 110ms ease;
 }
 
 .mini-task:hover {
@@ -388,7 +392,9 @@ button {
   flex: none;
   position: relative;
   cursor: pointer;
-  transition: background 110ms ease, border-color 110ms ease;
+  transition:
+    background 110ms ease,
+    border-color 110ms ease;
 }
 
 .mini-check:hover {
@@ -401,7 +407,7 @@ button {
 }
 
 .mini-check:checked::after {
-  content: "";
+  content: '';
   position: absolute;
   left: 4px;
   top: 1.5px;
@@ -572,11 +578,13 @@ button {
   background: var(--panel);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 110ms ease, border-color 110ms ease;
+  transition:
+    background 110ms ease,
+    border-color 110ms ease;
 }
 
 .mini-note::before {
-  content: "";
+  content: '';
   position: absolute;
   left: 0;
   top: 7px;
@@ -676,21 +684,6 @@ button {
   border-top: 1px solid var(--border);
   background: var(--panel);
   flex: none;
-}
-
-  display: inline-grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  flex: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--panel-soft);
-  color: var(--text-soft);
-}
-
-  background: var(--panel-hover);
-  color: var(--text);
 }
 
 .mini-toast {

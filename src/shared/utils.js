@@ -7,13 +7,54 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
-  const MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-  const MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-  const WEEKDAYS = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
+  const MONTHS_SHORT = [
+    'янв',
+    'фев',
+    'мар',
+    'апр',
+    'мая',
+    'июн',
+    'июл',
+    'авг',
+    'сен',
+    'окт',
+    'ноя',
+    'дек'
+  ];
+  const MONTHS_GEN = [
+    'января',
+    'февраля',
+    'марта',
+    'апреля',
+    'мая',
+    'июня',
+    'июля',
+    'августа',
+    'сентября',
+    'октября',
+    'ноября',
+    'декабря'
+  ];
+  const WEEKDAYS = [
+    'воскресенье',
+    'понедельник',
+    'вторник',
+    'среда',
+    'четверг',
+    'пятница',
+    'суббота'
+  ];
 
   const CATEGORY_COLORS = [
-    '#2563eb', '#7c3aed', '#db2777', '#dc2626',
-    '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#475569'
+    '#2563eb',
+    '#7c3aed',
+    '#db2777',
+    '#dc2626',
+    '#ea580c',
+    '#ca8a04',
+    '#16a34a',
+    '#0891b2',
+    '#475569'
   ];
 
   const PRIORITIES = ['low', 'normal', 'high'];
@@ -22,6 +63,13 @@
 
   const THEMES = ['light', 'dark', 'system'];
   const THEME_LABELS = { light: 'Светлая', dark: 'Тёмная', system: 'Как в системе' };
+
+  const PANEL_TABS = ['both', 'tasks', 'notes'];
+  const PANEL_TABS_LABELS = {
+    both: 'Обе вкладки',
+    tasks: 'Только задачи',
+    notes: 'Только заметки'
+  };
 
   function pad2(n) {
     return String(n).padStart(2, '0');
@@ -58,9 +106,11 @@
     const da = parseDate(a);
     const db = parseDate(b);
     if (!da || !db) return false;
-    return da.getFullYear() === db.getFullYear()
-      && da.getMonth() === db.getMonth()
-      && da.getDate() === db.getDate();
+    return (
+      da.getFullYear() === db.getFullYear() &&
+      da.getMonth() === db.getMonth() &&
+      da.getDate() === db.getDate()
+    );
   }
 
   function isToday(value, now) {
@@ -315,6 +365,8 @@
     PRIORITY_RANK,
     THEMES,
     THEME_LABELS,
+    PANEL_TABS,
+    PANEL_TABS_LABELS,
     pad2,
     parseDate,
     startOfDay,

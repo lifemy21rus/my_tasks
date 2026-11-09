@@ -1,594 +1,1076 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Планировщик</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <div class="app" id="app">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 12.5l5 5L20 6.5" />
-          </svg>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Планировщик</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app" id="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M4 12.5l5 5L20 6.5" />
+            </svg>
+          </div>
+          <div class="brand-text">
+            <span class="brand-title">Планировщик</span>
+          </div>
         </div>
-        <div class="brand-text">
-          <span class="brand-title">Планировщик</span>
-        </div>
-      </div>
 
-      <nav class="nav" id="smart-nav" aria-label="Списки">
-        <button class="nav-item is-active" data-view="all" type="button">
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
-          </span>
-          <span class="nav-label">Все задачи</span>
-          <span class="nav-count" data-count="all">0</span>
-        </button>
-        <button class="nav-item" data-view="notes" type="button">
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h10l4 4v12H5z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>
-          </span>
-          <span class="nav-label">Заметки</span>
-          <span class="nav-count" data-count="notes">0</span>
-        </button>
-      </nav>
-
-      <div class="sidebar-section">
-        <div class="sidebar-section-head">
-          <span>Сроки</span>
-        </div>
-        <select class="due-filter-select" id="due-filter" type="button">
-          <option value="">Все со сроком</option>
-          <option value="inbox">Без срока (Входящие)</option>
-          <option value="today">Сегодня</option>
-          <option value="tomorrow">Завтра</option>
-          <option value="overdue">Просроченные</option>
-          <option value="soon">Ближайшая неделя</option>
-        </select>
-      </div>
-
-      <div class="sidebar-section">
-        <div class="sidebar-section-head">
-          <span>Категории</span>
-          <button class="icon-btn small" id="add-category-btn" type="button" title="Добавить категорию" aria-label="Добавить категорию">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        <nav class="nav" id="smart-nav" aria-label="Списки">
+          <button class="nav-item is-active" data-view="all" type="button">
+            <span class="nav-icon">
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.9"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="4" width="18" height="17" rx="3" />
+                <path d="M8 9h8M8 13h8M8 17h5" />
+              </svg>
+            </span>
+            <span class="nav-label">Все задачи</span>
+            <span class="nav-count" data-count="all">0</span>
           </button>
-        </div>
-        <div class="category-list" id="category-list"></div>
-      </div>
+          <button class="nav-item" data-view="notes" type="button">
+            <span class="nav-icon">
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.9"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 4h10l4 4v12H5z" />
+                <path d="M9 10h6M9 14h6M9 18h4" />
+              </svg>
+            </span>
+            <span class="nav-label">Заметки</span>
+            <span class="nav-count" data-count="notes">0</span>
+          </button>
+        </nav>
 
-      <div class="sidebar-section">
-        <div class="sidebar-section-head">
-          <span>Приоритет</span>
+        <div class="sidebar-section">
+          <div class="sidebar-section-head">
+            <span>Сроки</span>
+          </div>
+          <select class="due-filter-select" id="due-filter" type="button">
+            <option value="">Все со сроком</option>
+            <option value="inbox">Без срока (Входящие)</option>
+            <option value="today">Сегодня</option>
+            <option value="tomorrow">Завтра</option>
+            <option value="overdue">Просроченные</option>
+            <option value="soon">Ближайшая неделя</option>
+          </select>
         </div>
-        <div class="filter-pills" id="priority-filters">
-          <button class="filter-pill is-active" data-priority="" type="button">Все</button>
-          <button class="filter-pill" data-priority="high" type="button">Высокий</button>
-          <button class="filter-pill" data-priority="normal" type="button">Обычный</button>
-          <button class="filter-pill" data-priority="low" type="button">Низкий</button>
-        </div>
-      </div>
 
-      <div class="sidebar-footer">
-        <button class="nav-item" id="settings-btn" type="button">
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>
+        <div class="sidebar-section">
+          <div class="sidebar-section-head">
+            <span>Категории</span>
+            <button
+              class="icon-btn small"
+              id="add-category-btn"
+              type="button"
+              title="Добавить категорию"
+              aria-label="Добавить категорию"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </div>
+          <div class="category-list" id="category-list"></div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-head">
+            <span>Приоритет</span>
+          </div>
+          <select id="priority-filter" class="select select-compact">
+            <option value="">Все</option>
+            <option value="high">Высокий</option>
+            <option value="normal">Обычный</option>
+            <option value="low">Низкий</option>
+          </select>
+        </div>
+
+        <div class="sidebar-footer">
+          <button class="nav-item" id="settings-btn" type="button">
+            <span class="nav-icon">
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.9"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="3.2" />
+                <path
+                  d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"
+                />
+              </svg>
+            </span>
+            <span class="nav-label">Настройки</span>
+          </button>
+          <div class="hotkey-hint" id="hotkey-hint">Ctrl+Shift+Space</div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="topbar-row">
+            <div class="view-title-wrap">
+              <h1 class="view-title" id="view-title">Все задачи</h1>
+              <span class="view-sub" id="view-sub">0 задач</span>
+            </div>
+            <div class="topbar-actions">
+              <div class="search-wrap">
+                <svg
+                  class="search-icon"
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M20 20l-3.5-3.5" />
+                </svg>
+                <input
+                  type="search"
+                  id="search-input"
+                  class="search-input"
+                  placeholder="Поиск задач…"
+                  autocomplete="off"
+                />
+                <button
+                  class="search-clear"
+                  id="search-clear"
+                  type="button"
+                  title="Очистить"
+                  aria-label="Очистить поиск"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="14"
+                    height="14"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                    stroke-linecap="round"
+                  >
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </div>
+              <button class="btn btn-primary" id="new-task-btn" type="button">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                <span>Задача</span>
+              </button>
+              <button
+                class="btn btn-primary"
+                id="new-note-btn"
+                type="button"
+                style="margin-left: 8px"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                >
+                  <path d="M12 4v16M8 12h8" />
+                </svg>
+                <span>Заметка</span>
+              </button>
+            </div>
+          </div>
+          <div class="topbar-row filters-row" id="topbar-notes-row" hidden>
+            <div class="filters" id="notes-filter-group">
+              <button class="chip is-active" id="notes-view-active" data-archive="false" type="button">Активные</button>
+              <button class="chip" id="notes-view-archived" data-archive="true" type="button">Архив</button>
+            </div>
+          </div>
+          <div class="topbar-row filters-row">
+            <div class="filters" id="filter-group">
+              <button class="chip is-active" data-filter="active" type="button">Активные</button>
+              <button class="chip" data-filter="all" type="button">Все</button>
+              <button class="chip" data-filter="done" type="button">Выполненные</button>
+            </div>
+            <div class="sort-wrap">
+              <label class="sort-label" for="sort-select">Сортировка</label>
+              <select id="sort-select" class="select select-compact">
+                <option value="smart">По важности</option>
+                <option value="due">По сроку</option>
+                <option value="created">По дате создания</option>
+                <option value="title">По названию</option>
+              </select>
+            </div>
+          </div>
+        </header>
+
+        <section class="list-wrap" id="list-wrap">
+          <div class="task-list" id="task-list" role="list"></div>
+          <div class="notes-section" id="notes-section">
+            <div class="notes-section-head" id="notes-section-head">
+              <button
+                class="btn btn-ghost btn-sm notes-section-add"
+                id="notes-section-add-btn"
+                type="button"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Добавить
+              </button>
+            </div>
+            <div class="note-list" id="note-list"></div>
+          </div>
+          <div class="empty-state" id="empty-state" hidden>
+            <div class="empty-icon" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                width="42"
+                height="42"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="4" width="18" height="17" rx="3" />
+                <path d="M8 9h8M8 13h6" />
+                <path d="M9 18l2 2 4-4" />
+              </svg>
+            </div>
+            <h2 class="empty-title" id="empty-title">Здесь пока пусто</h2>
+            <p class="empty-text" id="empty-text">
+              Добавьте первую задачу — и она появится в этом списке.
+            </p>
+            <button class="btn btn-primary" id="empty-add-btn" type="button">
+              Добавить задачу
+            </button>
+          </div>
+        </section>
+
+        <footer class="statusbar">
+          <span id="status-left">Готово</span>
+          <span class="statusbar-right">
+            <button class="link-btn" id="clear-completed-btn" type="button" hidden>
+              Очистить выполненные
+            </button>
+            <span
+              class="statusbar-dot"
+              id="hotkey-status"
+              title="Глобальная горячая клавиша"
+            ></span>
           </span>
-          <span class="nav-label">Настройки</span>
-        </button>
-        <div class="hotkey-hint" id="hotkey-hint">Ctrl+Shift+Space</div>
+        </footer>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="modal-backdrop" hidden>
+      <div
+        class="modal"
+        id="task-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="task-modal-title"
+        hidden
+      >
+        <header class="modal-head">
+          <h2 id="task-modal-title">Новая задача</h2>
+          <button class="icon-btn" id="task-modal-close" type="button" aria-label="Закрыть">
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+            >
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </header>
+
+        <div class="modal-body">
+          <label class="field">
+            <span class="field-label">Название</span>
+            <input
+              type="text"
+              id="task-title-input"
+              class="input input-lg"
+              maxlength="500"
+              placeholder="Что нужно сделать?"
+              autocomplete="off"
+            />
+            <span class="field-error" id="task-title-error" hidden></span>
+          </label>
+
+          <label class="field">
+            <span class="field-label">Описание <span class="field-hint">необязательно</span></span>
+            <textarea
+              id="task-desc-input"
+              class="input textarea"
+              rows="3"
+              maxlength="10000"
+              placeholder="Детали, ссылки, заметки…"
+            ></textarea>
+          </label>
+
+          <div class="field-row">
+            <div class="field field-grow">
+              <span class="field-label">Срок</span>
+              <div class="due-row">
+                <input type="date" id="task-date-input" class="input" />
+                <input type="time" id="task-time-input" class="input input-time" step="300" />
+                <button
+                  class="icon-btn subtle"
+                  id="clear-due-btn"
+                  type="button"
+                  title="Убрать срок"
+                  aria-label="Убрать срок"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                    stroke-linecap="round"
+                  >
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </div>
+              <div class="quick-due" id="quick-due">
+                <button class="mini-chip" data-quick="today" type="button">Сегодня</button>
+                <button class="mini-chip" data-quick="tomorrow" type="button">Завтра</button>
+                <button class="mini-chip" data-quick="week" type="button">Через неделю</button>
+                <button class="mini-chip" data-quick="month" type="button">Через месяц</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <label class="field field-grow">
+              <span class="field-label">Приоритет</span>
+              <select id="task-priority-input" class="select">
+                <option value="low">Низкий</option>
+                <option value="normal" selected>Обычный</option>
+                <option value="high">Высокий</option>
+              </select>
+            </label>
+            <label class="field field-grow">
+              <span class="field-label">Категория</span>
+              <select id="task-category-input" class="select">
+                <option value="">Без категории</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="field-row">
+            <label class="field field-grow">
+              <span class="field-label">Цвет задачи</span>
+              <div class="color-grid task-color-grid" id="task-color-grid">
+                <button
+                  class="color-swatch"
+                  type="button"
+                  data-color="#ef4444"
+                  style="background: #ef4444"
+                  title="Красный"
+                ></button>
+                <button
+                  class="color-swatch"
+                  type="button"
+                  data-color="#f97316"
+                  style="background: #f97316"
+                  title="Оранжевый"
+                ></button>
+                <button
+                  class="color-swatch"
+                  type="button"
+                  data-color="#f59e0b"
+                  style="background: #f59e0b"
+                  title="Янтарный"
+                ></button>
+                <button
+                  class="color-swatch"
+                  type="button"
+                  data-color="#84cc16"
+                  style="background: #84cc16"
+                  title="Зелёный"
+                ></button>
+                <button
+                  class="color-swatch"
+                  type="button"
+                  data-color="#22c55e"
+                  style="background: #22c55e"
+                  title="Изумрудный"
+                ></button>
+                <button
+                  class="color-swatch"
+                  type="button"
+                  data-color="#06b6d4"
+                  style="background: #06b6d4"
+                  title="Голубой"
+                ></button>
+                <button
+                  class="color-swatch"
+                  type="button"
+                  data-color="#3b82f6"
+                  style="background: #3b82f6"
+                  title="Синий"
+                ></button>
+                <button
+                  class="color-swatch"
+                  type="button"
+                  data-color="#8b5cf6"
+                  style="background: #8b5cf6"
+                  title="Фиолетовый"
+                ></button>
+              </div>
+              <span class="field-hint">Цветной индикатор в карточке задачи.</span>
+            </label>
+          </div>
+
+          <div class="field-row">
+            <label class="field field-grow">
+              <span class="field-label">Шаблон задачи</span>
+              <select id="task-template-select" class="select select-compact">
+                <option value="">Без шаблона</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="field-row">
+            <label class="field field-grow">
+              <span class="field-label">Оценочное время (мин.)</span>
+              <input
+                type="number"
+                id="task-estimated-minutes"
+                class="input input-sm"
+                min="0"
+                placeholder="0"
+              />
+              <span class="field-hint">Сколько времени планируется потратить на задачу.</span>
+            </label>
+            <label class="field field-grow">
+              <span class="field-label">Затрачено времени (мин.)</span>
+              <input
+                type="number"
+                id="task-actual-minutes"
+                class="input input-sm"
+                min="0"
+                placeholder="0"
+              />
+              <span class="field-hint">Фактически затраченное время.</span>
+            </label>
+          </div>
+
+          <div class="field reminder-field">
+            <span class="field-label">Напоминания</span>
+            <div class="reminder-list" id="reminder-list"></div>
+            <button class="btn btn-ghost btn-sm" id="add-reminder-btn" type="button">
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Добавить напоминание
+            </button>
+            <p class="field-hint">Напомнить за X минут до срока и/или в момент срока.</p>
+          </div>
+
+          <div class="field recurrence-field">
+            <span class="field-label">Повторение</span>
+            <div class="recurrence-grid">
+              <label class="inline-check">
+                <input type="radio" name="recurrence-type" value="none" checked />
+                <span>Не повторять</span>
+              </label>
+              <label class="inline-check">
+                <input type="radio" name="recurrence-type" value="daily" />
+                <span>Ежедневно</span>
+              </label>
+              <label class="inline-check">
+                <input type="radio" name="recurrence-type" value="weekly" />
+                <span>Еженедельно</span>
+              </label>
+              <label class="inline-check">
+                <input type="radio" name="recurrence-type" value="monthly" />
+                <span>Ежемесячно</span>
+              </label>
+            </div>
+            <div class="recurrence-options" id="recurrence-options" hidden>
+              <label class="field field-grow">
+                <span class="field-label">Интервал</span>
+                <input
+                  type="number"
+                  id="recurrence-interval"
+                  class="input input-sm"
+                  min="1"
+                  value="1"
+                />
+              </label>
+              <div class="recurrence-weekdays" id="recurrence-weekdays" hidden>
+                <span class="field-label">Дни недели</span>
+                <div class="weekday-grid">
+                  <label class="weekday-check"
+                    ><input type="checkbox" name="recurrence-weekday" value="0" />Вс</label
+                  >
+                  <label class="weekday-check"
+                    ><input type="checkbox" name="recurrence-weekday" value="1" />Пн</label
+                  >
+                  <label class="weekday-check"
+                    ><input type="checkbox" name="recurrence-weekday" value="2" />Вт</label
+                  >
+                  <label class="weekday-check"
+                    ><input type="checkbox" name="recurrence-weekday" value="3" />Ср</label
+                  >
+                  <label class="weekday-check"
+                    ><input type="checkbox" name="recurrence-weekday" value="4" />Чт</label
+                  >
+                  <label class="weekday-check"
+                    ><input type="checkbox" name="recurrence-weekday" value="5" />Пт</label
+                  >
+                  <label class="weekday-check"
+                    ><input type="checkbox" name="recurrence-weekday" value="6" />Сб</label
+                  >
+                </div>
+              </div>
+              <label class="field field-grow">
+                <span class="field-label">До даты</span>
+                <input type="date" id="recurrence-end-date" class="input input-sm" />
+              </label>
+            </div>
+            <p class="field-hint">
+              При выполнении задачи создаётся следующее экземпляр по расписанию.
+            </p>
+          </div>
+
+          <div class="field subtasks-field" id="subtasks-field">
+            <div class="field-label-row">
+              <span class="field-label"
+                >Подзадачи <span class="field-hint">один уровень</span></span
+              >
+              <span class="subtask-counter" id="subtask-counter">0 из 0</span>
+            </div>
+            <div class="subtask-editor-list" id="subtask-editor-list"></div>
+            <div class="subtask-add-row">
+              <input
+                type="text"
+                id="subtask-input"
+                class="input"
+                maxlength="500"
+                placeholder="Новая подзадача…"
+                autocomplete="off"
+              />
+              <button class="btn btn-ghost" id="subtask-add-btn" type="button">Добавить</button>
+            </div>
+          </div>
+        </div>
+
+        <footer class="modal-foot">
+          <button class="btn btn-ghost danger-ghost" id="task-delete-btn" type="button" hidden>
+            Удалить
+          </button>
+          <div class="modal-foot-right">
+            <button class="btn btn-ghost" id="task-cancel-btn" type="button">Отмена</button>
+            <button class="btn btn-ghost" id="task-save-as-template-btn" type="button">
+              Сохранить как шаблон
+            </button>
+            <button class="btn btn-primary" id="task-save-btn" type="button">Сохранить</button>
+          </div>
+        </footer>
       </div>
-    </aside>
 
-    <main class="main">
-      <header class="topbar">
-        <div class="topbar-row">
-          <div class="view-title-wrap">
-            <h1 class="view-title" id="view-title">Все задачи</h1>
-            <span class="view-sub" id="view-sub">0 задач</span>
+      <div
+        class="modal modal-sm"
+        id="confirm-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        hidden
+      >
+        <header class="modal-head">
+          <h2 id="confirm-title">Подтверждение</h2>
+          <button class="icon-btn" id="confirm-close" type="button" aria-label="Закрыть">
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+            >
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </header>
+        <div class="modal-body">
+          <p class="confirm-text" id="confirm-text"></p>
+        </div>
+        <footer class="modal-foot">
+          <div class="modal-foot-right">
+            <button class="btn btn-ghost" id="confirm-cancel" type="button">Отмена</button>
+            <button class="btn btn-danger" id="confirm-ok" type="button">Удалить</button>
           </div>
-          <div class="topbar-actions">
-            <div class="search-wrap">
-              <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-              <input type="search" id="search-input" class="search-input" placeholder="Поиск задач…" autocomplete="off" />
-              <button class="search-clear" id="search-clear" type="button" title="Очистить" aria-label="Очистить поиск">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </footer>
+      </div>
+
+      <div
+        class="modal modal-sm"
+        id="category-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="category-modal-title"
+        hidden
+      >
+        <header class="modal-head">
+          <h2 id="category-modal-title">Новая категория</h2>
+          <button class="icon-btn" id="category-modal-close" type="button" aria-label="Закрыть">
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+            >
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </header>
+        <div class="modal-body">
+          <label class="field">
+            <span class="field-label">Название</span>
+            <input
+              type="text"
+              id="category-name-input"
+              class="input input-lg"
+              maxlength="60"
+              placeholder="Например, Работа"
+              autocomplete="off"
+            />
+            <span class="field-error" id="category-name-error" hidden></span>
+          </label>
+          <div class="field">
+            <span class="field-label">Цвет</span>
+            <div class="color-grid" id="category-color-grid"></div>
+          </div>
+        </div>
+        <footer class="modal-foot">
+          <button class="btn btn-ghost danger-ghost" id="category-delete-btn" type="button" hidden>
+            Удалить
+          </button>
+          <div class="modal-foot-right">
+            <button class="btn btn-ghost" id="category-cancel-btn" type="button">Отмена</button>
+            <button class="btn btn-primary" id="category-save-btn" type="button">Сохранить</button>
+          </div>
+        </footer>
+      </div>
+
+      <div
+        class="modal"
+        id="settings-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-modal-title"
+        hidden
+      >
+        <header class="modal-head">
+          <h2 id="settings-modal-title">Настройки</h2>
+          <button class="icon-btn" id="settings-modal-close" type="button" aria-label="Закрыть">
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+            >
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </header>
+        <div class="modal-body settings-body">
+          <section class="settings-section">
+            <h3 class="settings-title">Внешний вид</h3>
+            <div class="theme-grid" id="theme-grid">
+              <button class="theme-option" data-theme="light" type="button">
+                <span class="theme-preview theme-preview-light"></span>
+                <span>Светлая</span>
+              </button>
+              <button class="theme-option" data-theme="dark" type="button">
+                <span class="theme-preview theme-preview-dark"></span>
+                <span>Тёмная</span>
+              </button>
+              <button class="theme-option" data-theme="system" type="button">
+                <span class="theme-preview theme-preview-system"></span>
+                <span>Как в системе</span>
               </button>
             </div>
-            <button class="btn btn-primary" id="new-task-btn" type="button">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-              <span>Задача</span>
-            </button>
-            <button class="btn btn-primary" id="new-note-btn" type="button" style="margin-left: 8px;">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 4v16M8 12h8"/></svg>
-              <span>Заметка</span>
-            </button>
-          </div>
-        </div>
-        <div class="topbar-row filters-row">
-          <div class="filters" id="filter-group">
-            <button class="chip is-active" data-filter="active" type="button">Активные</button>
-            <button class="chip" data-filter="all" type="button">Все</button>
-            <button class="chip" data-filter="done" type="button">Выполненные</button>
-          </div>
-          <div class="sort-wrap">
-            <label class="sort-label" for="sort-select">Сортировка</label>
-            <select id="sort-select" class="select select-compact">
-              <option value="smart">По важности</option>
-              <option value="due">По сроку</option>
-              <option value="created">По дате создания</option>
-              <option value="title">По названию</option>
-            </select>
-          </div>
-        </div>
-      </header>
+          </section>
 
-      <section class="list-wrap" id="list-wrap">
-        <div class="task-list" id="task-list" role="list"></div>
-        <div class="notes-section" id="notes-section">
-          <div class="notes-section-head" id="notes-section-head">
-            <h2 class="notes-section-title">Заметки</h2>
-            <span class="notes-section-count" id="notes-section-count">0</span>
-            <button class="btn btn-ghost btn-sm notes-section-add" id="notes-section-add-btn" type="button">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-              Добавить
-            </button>
-          </div>
-          <div class="note-list" id="note-list"></div>
-        </div>
-        <div class="empty-state" id="empty-state" hidden>
-          <div class="empty-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 9h8M8 13h6"/><path d="M9 18l2 2 4-4"/></svg>
-          </div>
-          <h2 class="empty-title" id="empty-title">Здесь пока пусто</h2>
-          <p class="empty-text" id="empty-text">Добавьте первую задачу — и она появится в этом списке.</p>
-          <button class="btn btn-primary" id="empty-add-btn" type="button">Добавить задачу</button>
-        </div>
-      </section>
+          <section class="settings-section">
+            <h3 class="settings-title">Поведение</h3>
+            <label class="setting-row">
+              <span class="setting-text">
+                <span class="setting-name">Запускать при входе в Windows</span>
+                <span class="setting-desc">Приложение будет добавлять ярлык в автозагрузку.</span>
+              </span>
+              <span class="switch">
+                <input type="checkbox" id="setting-autostart" />
+                <span class="switch-track"></span>
+              </span>
+            </label>
+            <label class="setting-row">
+              <span class="setting-text">
+                <span class="setting-name">Ярлык в меню «Пуск»</span>
+                <span class="setting-desc"
+                  >Создать ярлык приложения в меню «Пуск» (нужен для надёжной работы
+                  уведомлений).</span
+                >
+              </span>
+              <span class="switch">
+                <input type="checkbox" id="setting-start-menu-shortcut" />
+                <span class="switch-track"></span>
+              </span>
+            </label>
+            <label class="setting-row">
+              <span class="setting-text">
+                <span class="setting-name">Запускать свёрнутым</span>
+                <span class="setting-desc"
+                  >Окно не будет открываться сразу, приложение останется в трее.</span
+                >
+              </span>
+              <span class="switch">
+                <input type="checkbox" id="setting-start-minimized" />
+                <span class="switch-track"></span>
+              </span>
+            </label>
+            <label class="setting-row">
+              <span class="setting-text">
+                <span class="setting-name">Показывать мини-панель</span>
+                <span class="setting-desc"
+                  >Маленькое окно поверх всех окон с задачами и заметками.</span
+                >
+              </span>
+              <span class="switch">
+                <input type="checkbox" id="setting-mini-panel" />
+                <span class="switch-track"></span>
+              </span>
+            </label>
+            <label class="setting-row">
+              <span class="setting-text">
+                <span class="setting-name">Запускать мини-панель при старте</span>
+                <span class="setting-desc">Мини-панель появится вместе с запуском приложения.</span>
+              </span>
+              <span class="switch">
+                <input type="checkbox" id="setting-mini-panel-at-start" />
+                <span class="switch-track"></span>
+              </span>
+            </label>
+            <label class="setting-row">
+              <span class="setting-text">
+                <span class="setting-name">Показывать в мини-панели</span>
+                <span class="setting-desc">Какие вкладки доступны в мини-панели.</span>
+              </span>
+              <select id="setting-mini-panel-tabs" class="select select-compact">
+                <option value="both">Обе вкладки</option>
+                <option value="tasks">Только задачи</option>
+                <option value="notes">Только заметки</option>
+              </select>
+            </label>
+            <label class="setting-row">
+              <span class="setting-text">
+                <span class="setting-name">Закрывать приложение при закрытии окна</span>
+                <span class="setting-desc"
+                  >По умолчанию окно сворачивается в трей. Включите, чтобы полностью выходить из
+                  приложения.</span
+                >
+              </span>
+              <span class="switch">
+                <input type="checkbox" id="setting-quit-on-close" />
+                <span class="switch-track"></span>
+              </span>
+            </label>
+          </section>
 
-      <footer class="statusbar">
-        <span id="status-left">Готово</span>
-        <span class="statusbar-right">
-          <button class="link-btn" id="clear-completed-btn" type="button" hidden>Очистить выполненные</button>
-          <span class="statusbar-dot" id="hotkey-status" title="Глобальная горячая клавиша"></span>
-        </span>
-      </footer>
-    </main>
-  </div>
-
-  <div class="modal-backdrop" id="modal-backdrop" hidden>
-    <div class="modal" id="task-modal" role="dialog" aria-modal="true" aria-labelledby="task-modal-title" hidden>
-      <header class="modal-head">
-        <h2 id="task-modal-title">Новая задача</h2>
-        <button class="icon-btn" id="task-modal-close" type="button" aria-label="Закрыть">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </header>
-
-      <div class="modal-body">
-        <label class="field">
-          <span class="field-label">Название</span>
-          <input type="text" id="task-title-input" class="input input-lg" maxlength="500" placeholder="Что нужно сделать?" autocomplete="off" />
-          <span class="field-error" id="task-title-error" hidden></span>
-        </label>
-
-        <label class="field">
-          <span class="field-label">Описание <span class="field-hint">необязательно</span></span>
-          <textarea id="task-desc-input" class="input textarea" rows="3" maxlength="10000" placeholder="Детали, ссылки, заметки…"></textarea>
-        </label>
-
-        <div class="field-row">
-          <div class="field field-grow">
-            <span class="field-label">Срок</span>
-            <div class="due-row">
-              <input type="date" id="task-date-input" class="input" />
-              <input type="time" id="task-time-input" class="input input-time" step="300" />
-              <button class="icon-btn subtle" id="clear-due-btn" type="button" title="Убрать срок" aria-label="Убрать срок">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          <section class="settings-section">
+            <h3 class="settings-title">Напоминания</h3>
+            <label class="setting-row column">
+              <span class="setting-text">
+                <span class="setting-name">По умолчанию напоминать заранее</span>
+                <span class="setting-desc">Для новых задач, если не задано иное.</span>
+              </span>
+              <select id="setting-default-remind" class="select select-compact">
+                <option value="-1">Не напоминать заранее</option>
+                <option value="10">за 10 минут</option>
+                <option value="30">за 30 минут</option>
+                <option value="60">за 1 час</option>
+                <option value="120">за 2 часа</option>
+                <option value="1440">за 1 день</option>
+              </select>
+            </label>
+            <label class="setting-row">
+              <span class="setting-text">
+                <span class="setting-name">Напоминать в момент срока</span>
+                <span class="setting-desc">Отдельное уведомление, когда срок наступил.</span>
+              </span>
+              <span class="switch">
+                <input type="checkbox" id="setting-remind-at-due" />
+                <span class="switch-track"></span>
+              </span>
+            </label>
+            <div class="setting-row">
+              <span class="setting-text">
+                <span class="setting-name">Проверить уведомления</span>
+                <span class="setting-desc">Отправит тестовое уведомление Windows.</span>
+              </span>
+              <button class="btn btn-ghost" id="test-notification-btn" type="button">
+                Проверить
               </button>
             </div>
-            <div class="quick-due" id="quick-due">
-              <button class="mini-chip" data-quick="today" type="button">Сегодня</button>
-              <button class="mini-chip" data-quick="tomorrow" type="button">Завтра</button>
-              <button class="mini-chip" data-quick="week" type="button">Через неделю</button>
-              <button class="mini-chip" data-quick="month" type="button">Через месяц</button>
+          </section>
+
+          <section class="settings-section">
+            <h3 class="settings-title">Горячая клавиша</h3>
+            <label class="setting-row">
+              <span class="setting-text">
+                <span class="setting-name">Показывать окно</span>
+                <span class="setting-desc">Работает из любого приложения.</span>
+              </span>
+              <span class="switch">
+                <input type="checkbox" id="setting-hotkey-enabled" />
+                <span class="switch-track"></span>
+              </span>
+            </label>
+            <div class="hotkey-row">
+              <input
+                type="text"
+                id="setting-hotkey-input"
+                class="input input-hotkey"
+                readonly
+                placeholder="Нажмите сочетание"
+              />
+              <button class="btn btn-ghost" id="setting-hotkey-capture" type="button">
+                Изменить
+              </button>
+              <button class="btn btn-ghost" id="setting-hotkey-reset" type="button">
+                Сбросить
+              </button>
             </div>
+            <p class="settings-note">
+              Формат: Ctrl+Shift+Space. Поддерживаются Ctrl, Alt, Shift и клавиши A–Z, F1–F12,
+              Space.
+            </p>
+          </section>
+
+          <section class="settings-section">
+            <h3 class="settings-title">Данные</h3>
+            <div class="settings-actions">
+              <button class="btn btn-ghost" id="export-btn" type="button">Экспорт…</button>
+              <button class="btn btn-ghost" id="export-csv-btn" type="button">Экспорт CSV…</button>
+              <button class="btn btn-ghost" id="import-btn" type="button">Импорт…</button>
+              <button class="btn btn-ghost" id="backup-btn" type="button">Резервная копия</button>
+              <button class="btn btn-ghost" id="open-folder-btn" type="button">
+                Открыть папку
+              </button>
+            </div>
+            <label class="setting-row">
+              <span class="setting-text">
+                <span class="setting-name">Шифрование файла данных</span>
+                <span class="setting-desc"
+                  >Опциональный пароль через переменную окружения MYTASKS_DATA_PASSWORD. Требует
+                  перезапуска приложения.</span
+                >
+              </span>
+              <span class="switch">
+                <input type="checkbox" id="setting-data-encryption" />
+                <span class="switch-track"></span>
+              </span>
+            </label>
+            <p class="settings-note">
+              Данные хранятся локально: <span class="mono" id="data-dir-label">%APPDATA%</span>.
+              Хранятся 5 последних копий.
+            </p>
+          </section>
+
+          <section class="settings-section">
+            <h3 class="settings-title">О приложении</h3>
+            <p class="settings-note">
+              «Планировщик» — локальный планировщик задач и заметок. Без облака, входа и сбора
+              данных.
+              <span id="version-label"></span>
+            </p>
+            <div class="settings-actions">
+              <button class="btn btn-ghost" id="check-updates-btn" type="button">
+                Проверить обновления
+              </button>
+              <button class="btn btn-primary" id="install-update-btn" type="button" hidden>
+                Установить обновление
+              </button>
+            </div>
+            <p class="settings-note" id="update-status-note" hidden></p>
+          </section>
+        </div>
+        <footer class="modal-foot">
+          <div class="modal-foot-right">
+            <button class="btn btn-primary" id="settings-done-btn" type="button">Готово</button>
           </div>
-        </div>
+        </footer>
+      </div>
 
-        <div class="field-row">
-          <label class="field field-grow">
-            <span class="field-label">Приоритет</span>
-            <select id="task-priority-input" class="select">
-              <option value="low">Низкий</option>
-              <option value="normal" selected>Обычный</option>
-              <option value="high">Высокий</option>
-            </select>
-          </label>
-          <label class="field field-grow">
-            <span class="field-label">Категория</span>
-            <select id="task-category-input" class="select">
-              <option value="">Без категории</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="field-row">
-          <label class="field field-grow">
-            <span class="field-label">Цвет задачи</span>
-            <div class="color-grid task-color-grid" id="task-color-grid">
-              <button class="color-swatch" type="button" data-color="#ef4444" style="background:#ef4444" title="Красный"></button>
-              <button class="color-swatch" type="button" data-color="#f97316" style="background:#f97316" title="Оранжевый"></button>
-              <button class="color-swatch" type="button" data-color="#f59e0b" style="background:#f59e0b" title="Янтарный"></button>
-              <button class="color-swatch" type="button" data-color="#84cc16" style="background:#84cc16" title="Зелёный"></button>
-              <button class="color-swatch" type="button" data-color="#22c55e" style="background:#22c55e" title="Изумрудный"></button>
-              <button class="color-swatch" type="button" data-color="#06b6d4" style="background:#06b6d4" title="Голубой"></button>
-              <button class="color-swatch" type="button" data-color="#3b82f6" style="background:#3b82f6" title="Синий"></button>
-              <button class="color-swatch" type="button" data-color="#8b5cf6" style="background:#8b5cf6" title="Фиолетовый"></button>
-            </div>
-            <span class="field-hint">Цветной индикатор в карточке задачи.</span>
-          </label>
-        </div>
-
-        <div class="field-row">
-          <label class="field field-grow">
-            <span class="field-label">Шаблон задачи</span>
-            <select id="task-template-select" class="select select-compact">
+      <div
+        class="modal modal-sm"
+        id="note-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="note-modal-title"
+        hidden
+      >
+        <header class="modal-head">
+          <h2 id="note-modal-title">Новая заметка</h2>
+          <button class="icon-btn" id="note-modal-close" type="button" aria-label="Закрыть">
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+            >
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </header>
+        <div class="modal-body">
+          <label class="field">
+            <span class="field-label">Шаблон</span>
+            <select id="note-template-select" class="select select-compact">
               <option value="">Без шаблона</option>
             </select>
           </label>
-        </div>
-
-        <div class="field-row">
-          <label class="field field-grow">
-            <span class="field-label">Оценочное время (мин.)</span>
-            <input type="number" id="task-estimated-minutes" class="input input-sm" min="0" placeholder="0" />
-            <span class="field-hint">Сколько времени планируется потратить на задачу.</span>
+          <label class="field">
+            <span class="field-label">Название</span>
+            <input
+              type="text"
+              id="note-title-input"
+              class="input input-lg"
+              maxlength="500"
+              placeholder="Заголовок заметки"
+              autocomplete="off"
+            />
+            <span class="field-error" id="note-title-error" hidden></span>
           </label>
-          <label class="field field-grow">
-            <span class="field-label">Затрачено времени (мин.)</span>
-            <input type="number" id="task-actual-minutes" class="input input-sm" min="0" placeholder="0" />
-            <span class="field-hint">Фактически затраченное время.</span>
+          <label class="field">
+            <span class="field-label"
+              >Содержимое <span class="field-hint">необязательно</span></span
+            >
+            <textarea
+              id="note-content-input"
+              class="input textarea"
+              rows="5"
+              maxlength="5000"
+              placeholder="Что-то пришло в голову…"
+            ></textarea>
           </label>
+          <div class="field">
+            <span class="field-label">Цвет</span>
+            <div class="color-grid" id="note-color-picker"></div>
+          </div>
         </div>
-
-        <div class="field reminder-field">
-          <span class="field-label">Напоминания</span>
-          <div class="reminder-list" id="reminder-list"></div>
-          <button class="btn btn-ghost btn-sm" id="add-reminder-btn" type="button">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-            Добавить напоминание
+        <footer class="modal-foot">
+          <button class="btn btn-ghost danger-ghost" id="note-delete-btn" type="button" hidden>
+            Удалить
           </button>
-          <p class="field-hint">Напомнить за X минут до срока и/или в момент срока.</p>
-        </div>
-
-        <div class="field recurrence-field">
-          <span class="field-label">Повторение</span>
-          <div class="recurrence-grid">
-            <label class="inline-check">
-              <input type="radio" name="recurrence-type" value="none" checked />
-              <span>Не повторять</span>
-            </label>
-            <label class="inline-check">
-              <input type="radio" name="recurrence-type" value="daily" />
-              <span>Ежедневно</span>
-            </label>
-            <label class="inline-check">
-              <input type="radio" name="recurrence-type" value="weekly" />
-              <span>Еженедельно</span>
-            </label>
-            <label class="inline-check">
-              <input type="radio" name="recurrence-type" value="monthly" />
-              <span>Ежемесячно</span>
-            </label>
-          </div>
-          <div class="recurrence-options" id="recurrence-options" hidden>
-            <label class="field field-grow">
-              <span class="field-label">Интервал</span>
-              <input type="number" id="recurrence-interval" class="input input-sm" min="1" value="1" />
-            </label>
-            <div class="recurrence-weekdays" id="recurrence-weekdays" hidden>
-              <span class="field-label">Дни недели</span>
-              <div class="weekday-grid">
-                <label class="weekday-check"><input type="checkbox" name="recurrence-weekday" value="0" />Вс</label>
-                <label class="weekday-check"><input type="checkbox" name="recurrence-weekday" value="1" />Пн</label>
-                <label class="weekday-check"><input type="checkbox" name="recurrence-weekday" value="2" />Вт</label>
-                <label class="weekday-check"><input type="checkbox" name="recurrence-weekday" value="3" />Ср</label>
-                <label class="weekday-check"><input type="checkbox" name="recurrence-weekday" value="4" />Чт</label>
-                <label class="weekday-check"><input type="checkbox" name="recurrence-weekday" value="5" />Пт</label>
-                <label class="weekday-check"><input type="checkbox" name="recurrence-weekday" value="6" />Сб</label>
-              </div>
-            </div>
-            <label class="field field-grow">
-              <span class="field-label">До даты</span>
-              <input type="date" id="recurrence-end-date" class="input input-sm" />
-            </label>
-          </div>
-          <p class="field-hint">При выполнении задачи создаётся следующее экземпляр по расписанию.</p>
-        </div>
-
-        <div class="field subtasks-field" id="subtasks-field">
-          <div class="field-label-row">
-            <span class="field-label">Подзадачи <span class="field-hint">один уровень</span></span>
-            <span class="subtask-counter" id="subtask-counter">0 из 0</span>
-          </div>
-          <div class="subtask-editor-list" id="subtask-editor-list"></div>
-          <div class="subtask-add-row">
-            <input type="text" id="subtask-input" class="input" maxlength="500" placeholder="Новая подзадача…" autocomplete="off" />
-            <button class="btn btn-ghost" id="subtask-add-btn" type="button">Добавить</button>
-          </div>
-        </div>
-      </div>
-
-      <footer class="modal-foot">
-        <button class="btn btn-ghost danger-ghost" id="task-delete-btn" type="button" hidden>Удалить</button>
-        <div class="modal-foot-right">
-          <button class="btn btn-ghost" id="task-cancel-btn" type="button">Отмена</button>
-          <button class="btn btn-ghost" id="task-save-as-template-btn" type="button">Сохранить как шаблон</button>
-          <button class="btn btn-primary" id="task-save-btn" type="button">Сохранить</button>
-        </div>
-      </footer>
-    </div>
-
-    <div class="modal modal-sm" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title" hidden>
-      <header class="modal-head">
-        <h2 id="confirm-title">Подтверждение</h2>
-        <button class="icon-btn" id="confirm-close" type="button" aria-label="Закрыть">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </header>
-      <div class="modal-body">
-        <p class="confirm-text" id="confirm-text"></p>
-      </div>
-      <footer class="modal-foot">
-        <div class="modal-foot-right">
-          <button class="btn btn-ghost" id="confirm-cancel" type="button">Отмена</button>
-          <button class="btn btn-danger" id="confirm-ok" type="button">Удалить</button>
-        </div>
-      </footer>
-    </div>
-
-    <div class="modal modal-sm" id="category-modal" role="dialog" aria-modal="true" aria-labelledby="category-modal-title" hidden>
-      <header class="modal-head">
-        <h2 id="category-modal-title">Новая категория</h2>
-        <button class="icon-btn" id="category-modal-close" type="button" aria-label="Закрыть">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </header>
-      <div class="modal-body">
-        <label class="field">
-          <span class="field-label">Название</span>
-          <input type="text" id="category-name-input" class="input input-lg" maxlength="60" placeholder="Например, Работа" autocomplete="off" />
-          <span class="field-error" id="category-name-error" hidden></span>
-        </label>
-        <div class="field">
-          <span class="field-label">Цвет</span>
-          <div class="color-grid" id="category-color-grid"></div>
-        </div>
-      </div>
-      <footer class="modal-foot">
-        <button class="btn btn-ghost danger-ghost" id="category-delete-btn" type="button" hidden>Удалить</button>
-        <div class="modal-foot-right">
-          <button class="btn btn-ghost" id="category-cancel-btn" type="button">Отмена</button>
-          <button class="btn btn-primary" id="category-save-btn" type="button">Сохранить</button>
-        </div>
-      </footer>
-    </div>
-
-    <div class="modal" id="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title" hidden>
-      <header class="modal-head">
-        <h2 id="settings-modal-title">Настройки</h2>
-        <button class="icon-btn" id="settings-modal-close" type="button" aria-label="Закрыть">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </header>
-      <div class="modal-body settings-body">
-        <section class="settings-section">
-          <h3 class="settings-title">Внешний вид</h3>
-          <div class="theme-grid" id="theme-grid">
-            <button class="theme-option" data-theme="light" type="button">
-              <span class="theme-preview theme-preview-light"></span>
-              <span>Светлая</span>
+          <div class="modal-foot-right">
+            <button class="btn btn-ghost" id="note-cancel-btn" type="button">Отмена</button>
+            <button class="btn btn-ghost" id="note-save-as-template-btn" type="button">
+              Сохранить как шаблон
             </button>
-            <button class="theme-option" data-theme="dark" type="button">
-              <span class="theme-preview theme-preview-dark"></span>
-              <span>Тёмная</span>
-            </button>
-            <button class="theme-option" data-theme="system" type="button">
-              <span class="theme-preview theme-preview-system"></span>
-              <span>Как в системе</span>
-            </button>
+            <button class="btn btn-primary" id="note-save-btn" type="button">Сохранить</button>
           </div>
-        </section>
-
-        <section class="settings-section">
-          <h3 class="settings-title">Поведение</h3>
-          <label class="setting-row">
-            <span class="setting-text">
-              <span class="setting-name">Запускать при входе в Windows</span>
-              <span class="setting-desc">Приложение будет добавлять ярлык в автозагрузку.</span>
-            </span>
-            <span class="switch">
-              <input type="checkbox" id="setting-autostart" />
-              <span class="switch-track"></span>
-            </span>
-          </label>
-          <label class="setting-row">
-            <span class="setting-text">
-              <span class="setting-name">Ярлык в меню «Пуск»</span>
-              <span class="setting-desc">Создать ярлык приложения в меню «Пуск» (нужен для надёжной работы уведомлений).</span>
-            </span>
-            <span class="switch">
-              <input type="checkbox" id="setting-start-menu-shortcut" />
-              <span class="switch-track"></span>
-            </span>
-          </label>
-          <label class="setting-row">
-            <span class="setting-text">
-              <span class="setting-name">Запускать свёрнутым</span>
-              <span class="setting-desc">Окно не будет открываться сразу, приложение останется в трее.</span>
-            </span>
-            <span class="switch">
-              <input type="checkbox" id="setting-start-minimized" />
-              <span class="switch-track"></span>
-            </span>
-          </label>
-          <label class="setting-row">
-            <span class="setting-text">
-              <span class="setting-name">Показывать мини-панель</span>
-              <span class="setting-desc">Маленькое окно поверх всех окон с задачами и заметками.</span>
-            </span>
-            <span class="switch">
-              <input type="checkbox" id="setting-mini-panel" />
-              <span class="switch-track"></span>
-            </span>
-          </label>
-          <label class="setting-row">
-            <span class="setting-text">
-              <span class="setting-name">Закрывать приложение при закрытии окна</span>
-              <span class="setting-desc">По умолчанию окно сворачивается в трей. Включите, чтобы полностью выходить из приложения.</span>
-            </span>
-            <span class="switch">
-              <input type="checkbox" id="setting-quit-on-close" />
-              <span class="switch-track"></span>
-            </span>
-          </label>
-        </section>
-
-        <section class="settings-section">
-          <h3 class="settings-title">Напоминания</h3>
-          <label class="setting-row column">
-            <span class="setting-text">
-              <span class="setting-name">По умолчанию напоминать заранее</span>
-              <span class="setting-desc">Для новых задач, если не задано иное.</span>
-            </span>
-            <select id="setting-default-remind" class="select select-compact">
-              <option value="-1">Не напоминать заранее</option>
-              <option value="10">за 10 минут</option>
-              <option value="30">за 30 минут</option>
-              <option value="60">за 1 час</option>
-              <option value="120">за 2 часа</option>
-              <option value="1440">за 1 день</option>
-            </select>
-          </label>
-          <label class="setting-row">
-            <span class="setting-text">
-              <span class="setting-name">Напоминать в момент срока</span>
-              <span class="setting-desc">Отдельное уведомление, когда срок наступил.</span>
-            </span>
-            <span class="switch">
-              <input type="checkbox" id="setting-remind-at-due" />
-              <span class="switch-track"></span>
-            </span>
-          </label>
-          <div class="setting-row">
-            <span class="setting-text">
-              <span class="setting-name">Проверить уведомления</span>
-              <span class="setting-desc">Отправит тестовое уведомление Windows.</span>
-            </span>
-            <button class="btn btn-ghost" id="test-notification-btn" type="button">Проверить</button>
-          </div>
-        </section>
-
-        <section class="settings-section">
-          <h3 class="settings-title">Горячая клавиша</h3>
-          <label class="setting-row">
-            <span class="setting-text">
-              <span class="setting-name">Показывать окно</span>
-              <span class="setting-desc">Работает из любого приложения.</span>
-            </span>
-            <span class="switch">
-              <input type="checkbox" id="setting-hotkey-enabled" />
-              <span class="switch-track"></span>
-            </span>
-          </label>
-          <div class="hotkey-row">
-            <input type="text" id="setting-hotkey-input" class="input input-hotkey" readonly placeholder="Нажмите сочетание" />
-            <button class="btn btn-ghost" id="setting-hotkey-capture" type="button">Изменить</button>
-            <button class="btn btn-ghost" id="setting-hotkey-reset" type="button">Сбросить</button>
-          </div>
-          <p class="settings-note">Формат: Ctrl+Shift+Space. Поддерживаются Ctrl, Alt, Shift и клавиши A–Z, F1–F12, Space.</p>
-        </section>
-
-        <section class="settings-section">
-          <h3 class="settings-title">Данные</h3>
-          <div class="settings-actions">
-            <button class="btn btn-ghost" id="export-btn" type="button">Экспорт…</button>
-            <button class="btn btn-ghost" id="export-csv-btn" type="button">Экспорт CSV…</button>
-            <button class="btn btn-ghost" id="import-btn" type="button">Импорт…</button>
-            <button class="btn btn-ghost" id="backup-btn" type="button">Резервная копия</button>
-            <button class="btn btn-ghost" id="open-folder-btn" type="button">Открыть папку</button>
-          </div>
-          <p class="settings-note">Данные хранятся локально: <span class="mono" id="data-dir-label">%APPDATA%</span>. Хранятся 5 последних копий.</p>
-        </section>
-
-        <section class="settings-section">
-          <h3 class="settings-title">О приложении</h3>
-          <p class="settings-note">
-            «Планировщик» — локальный планировщик задач и заметок. Без облака, входа и сбора данных.
-            <span id="version-label"></span>
-          </p>
-          <div class="settings-actions">
-            <button class="btn btn-ghost" id="check-updates-btn" type="button">Проверить обновления</button>
-            <button class="btn btn-primary" id="install-update-btn" type="button" hidden>Установить обновление</button>
-          </div>
-          <p class="settings-note" id="update-status-note" hidden></p>
-        </section>
+        </footer>
       </div>
-      <footer class="modal-foot">
-        <div class="modal-foot-right">
-          <button class="btn btn-primary" id="settings-done-btn" type="button">Готово</button>
-        </div>
-      </footer>
     </div>
 
-    <div class="modal modal-sm" id="note-modal" role="dialog" aria-modal="true" aria-labelledby="note-modal-title" hidden>
-      <header class="modal-head">
-        <h2 id="note-modal-title">Новая заметка</h2>
-        <button class="icon-btn" id="note-modal-close" type="button" aria-label="Закрыть">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </header>
-      <div class="modal-body">
-        <label class="field">
-          <span class="field-label">Шаблон</span>
-          <select id="note-template-select" class="select select-compact">
-            <option value="">Без шаблона</option>
-          </select>
-        </label>
-        <label class="field">
-          <span class="field-label">Название</span>
-          <input type="text" id="note-title-input" class="input input-lg" maxlength="500" placeholder="Заголовок заметки" autocomplete="off" />
-          <span class="field-error" id="note-title-error" hidden></span>
-        </label>
-        <label class="field">
-          <span class="field-label">Содержимое <span class="field-hint">необязательно</span></span>
-          <textarea id="note-content-input" class="input textarea" rows="5" maxlength="5000" placeholder="Что-то пришло в голову…"></textarea>
-        </label>
-        <div class="field">
-          <span class="field-label">Цвет</span>
-          <div class="color-grid" id="note-color-picker"></div>
-        </div>
-      </div>
-      <footer class="modal-foot">
-        <button class="btn btn-ghost danger-ghost" id="note-delete-btn" type="button" hidden>Удалить</button>
-        <div class="modal-foot-right">
-          <button class="btn btn-ghost" id="note-cancel-btn" type="button">Отмена</button>
-          <button class="btn btn-ghost" id="note-save-as-template-btn" type="button">Сохранить как шаблон</button>
-          <button class="btn btn-primary" id="note-save-btn" type="button">Сохранить</button>
-        </div>
-      </footer>
-    </div>
-  </div>
+    <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
 
-  <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
-
-  <script src="../shared/utils.js"></script>
-  <script src="app.js"></script>
-</body>
+    <script src="../shared/utils.js"></script>
+    <script src="app.js"></script>
+  </body>
 </html>

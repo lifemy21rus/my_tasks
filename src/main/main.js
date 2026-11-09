@@ -1,6 +1,15 @@
 'use strict';
 
-const { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, shell, screen } = require('electron');
+const {
+  app,
+  BrowserWindow,
+  Tray,
+  Menu,
+  globalShortcut,
+  nativeImage,
+  shell,
+  screen
+} = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -183,7 +192,8 @@ function runMiniSmoke() {
     let error = null;
 
     try {
-      result = await win.webContents.executeJavaScript(`(async () => {
+      result = await win.webContents.executeJavaScript(
+        `(async () => {
         const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         const q = (selector, root) => Array.from((root || document).querySelectorAll(selector));
         const noteList = document.getElementById('mini-note-list');
@@ -228,7 +238,9 @@ function runMiniSmoke() {
         report.noteId = firstNote ? firstNote.dataset.id : null;
 
         return report;
-      })()`, true);
+      })()`,
+        true
+      );
 
       // снимок вкладки «Заметки» — до изменения состояния
       if (process.env.MYTASKS_MINI_SCREENSHOT) {
@@ -242,7 +254,8 @@ function runMiniSmoke() {
       }
 
       // отметка выполнения прямо в мини-панели
-      const toggleResult = await win.webContents.executeJavaScript(`(async () => {
+      const toggleResult = await win.webContents.executeJavaScript(
+        `(async () => {
         const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         const noteList = document.getElementById('mini-note-list');
         const firstNote = noteList.querySelector('.mini-note');
@@ -260,14 +273,18 @@ function runMiniSmoke() {
           groupsAfterToggle: Array.from(noteList.querySelectorAll('.mini-group-title span:first-child')).map((s) => s.textContent),
           doneRowExists: Boolean(noteList.querySelector('.mini-note.is-done'))
         };
-      })()`, true);
+      })()`,
+        true
+      );
 
       Object.assign(result, toggleResult);
 
       // диагностика: что видит хранилище и что лежит в файле
       result.storeNotesCount = store ? store.getData().notes.length : null;
       try {
-        const onDisk = JSON.parse(fs.readFileSync(path.join(store.getDataDir(), 'data.json'), 'utf8'));
+        const onDisk = JSON.parse(
+          fs.readFileSync(path.join(store.getDataDir(), 'data.json'), 'utf8')
+        );
         result.fileNotesCount = Array.isArray(onDisk.notes) ? onDisk.notes.length : null;
         result.fileHasNotesField = Object.prototype.hasOwnProperty.call(onDisk, 'notes');
       } catch (err) {
@@ -277,7 +294,8 @@ function runMiniSmoke() {
 
       // быстрый ввод на вкладке «Заметки» должен создавать заметку, а не задачу
       const quickAddTitle = `Заметка из мини smoke ${Date.now()}`;
-      const quickAddResult = await win.webContents.executeJavaScript(`(async () => {
+      const quickAddResult = await win.webContents.executeJavaScript(
+        `(async () => {
         const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         const noteList = document.getElementById('mini-note-list');
         const input = document.getElementById('mini-quick-input');
@@ -299,22 +317,28 @@ function runMiniSmoke() {
           summaryAfterAdd: document.getElementById('mini-count').textContent,
           noteCountBadge: document.getElementById('mini-tab-notes-count').textContent
         };
-      })()`, true);
+      })()`,
+        true
+      );
 
       Object.assign(result, { quickAdd: quickAddResult });
 
       // клик по заметке должен открыть её в основном окне
-      const clickTarget = await win.webContents.executeJavaScript(`(() => {
+      const clickTarget = await win.webContents.executeJavaScript(
+        `(() => {
         const row = document.querySelector('#mini-note-list .mini-note');
         if (!row) return null;
         row.click();
         return row.dataset.id;
-      })()`, true);
+      })()`,
+        true
+      );
 
       if (clickTarget) {
         await new Promise((resolve) => setTimeout(resolve, 1200));
         if (mainWindow && !mainWindow.isDestroyed()) {
-          mainResult = await mainWindow.webContents.executeJavaScript(`(() => {
+          mainResult = await mainWindow.webContents.executeJavaScript(
+            `(() => {
             const modal = document.getElementById('note-modal');
             const title = document.getElementById('note-modal-title');
             const view = document.getElementById('view-title');
@@ -323,19 +347,25 @@ function runMiniSmoke() {
               modalTitle: title ? title.textContent : '',
               viewTitle: view ? view.textContent : ''
             };
-          })()`, true);
+          })()`,
+            true
+          );
         }
       }
 
       // Ctrl+N на вкладке «Заметки» должен открыть пустую заметку в основном окне
-      await win.webContents.executeJavaScript(`(() => {
+      await win.webContents.executeJavaScript(
+        `(() => {
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'n', ctrlKey: true, bubbles: true }));
         return true;
-      })()`, true);
+      })()`,
+        true
+      );
 
       await new Promise((resolve) => setTimeout(resolve, 1200));
       if (mainWindow && !mainWindow.isDestroyed()) {
-        newNoteResult = await mainWindow.webContents.executeJavaScript(`(() => {
+        newNoteResult = await mainWindow.webContents.executeJavaScript(
+          `(() => {
           const modal = document.getElementById('note-modal');
           const title = document.getElementById('note-modal-title');
           const input = document.getElementById('note-title-input');
@@ -344,7 +374,9 @@ function runMiniSmoke() {
             modalTitle: title ? title.textContent : '',
             titleInputEmpty: input ? input.value === '' : false
           };
-        })()`, true);
+        })()`,
+          true
+        );
       }
     } catch (err) {
       error = err && err.stack ? err.stack : String(err);
@@ -363,11 +395,23 @@ function runMiniSmoke() {
     if (win) {
       clearInterval(timer);
       run(win).catch((err) => {
-        finish({ ok: false, error: err && err.stack ? err.stack : String(err), logs, result: null, mainResult: null });
+        finish({
+          ok: false,
+          error: err && err.stack ? err.stack : String(err),
+          logs,
+          result: null,
+          mainResult: null
+        });
       });
     } else if (attempts > 50) {
       clearInterval(timer);
-      finish({ ok: false, error: 'Мини-панель не появилась', logs, result: null, mainResult: null });
+      finish({
+        ok: false,
+        error: 'Мини-панель не появилась',
+        logs,
+        result: null,
+        mainResult: null
+      });
     }
   }, 100);
 }
@@ -398,7 +442,9 @@ function broadcastState() {
 
 function createTray() {
   if (tray) {
-    try { tray.destroy(); } catch (_) {}
+    try {
+      tray.destroy();
+    } catch (_) {}
   }
 
   const icon = loadIcon(process.platform === 'win32' ? 'tray.png' : 'icon.png');
@@ -407,17 +453,23 @@ function createTray() {
 
   const contextMenu = Menu.buildFromTemplate([
     { label: 'Показать', click: showWindow },
-    { label: 'Мини-панель', click: () => {
-      if (miniPanel && miniPanel.isVisible()) hideMini();
-      else showMini();
-    }},
+    {
+      label: 'Мини-панель',
+      click: () => {
+        if (miniPanel && miniPanel.isVisible()) hideMini();
+        else showMini();
+      }
+    },
     { label: 'Новая задача', click: createNewTask },
     { label: 'Настройки', click: openSettings },
     { type: 'separator' },
-    { label: 'Выход', click: () => {
-      isQuitting = true;
-      app.quit();
-    }}
+    {
+      label: 'Выход',
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      }
+    }
   ]);
 
   tray.setContextMenu(contextMenu);
@@ -428,7 +480,9 @@ function createTray() {
 function registerHotkey(hotkey, enabled) {
   try {
     if (registeredHotkey) {
-      try { globalShortcut.unregister(registeredHotkey); } catch (_) {}
+      try {
+        globalShortcut.unregister(registeredHotkey);
+      } catch (_) {}
       registeredHotkey = null;
     }
   } catch (err) {
@@ -499,7 +553,8 @@ function createWindow() {
 
   const settings = store ? store.getSettings() : { startMinimized: true };
   const shouldHide = settings.startMinimized || process.argv.includes('--hidden');
-  const testMode = process.env.MYTASKS_SCREENSHOT || process.env.MYTASKS_SMOKE || process.env.MYTASKS_MINI_SMOKE;
+  const testMode =
+    process.env.MYTASKS_SCREENSHOT || process.env.MYTASKS_SMOKE || process.env.MYTASKS_MINI_SMOKE;
 
   if (shouldHide && !testMode) {
     mainWindow.once('ready-to-show', () => {
@@ -508,6 +563,7 @@ function createWindow() {
   } else {
     mainWindow.once('ready-to-show', () => {
       showWindow();
+      if (settings.miniPanelAtStart) showMini();
     });
   }
 
@@ -528,7 +584,8 @@ function createWindow() {
       let result = null;
       let error = null;
       try {
-        result = await mainWindow.webContents.executeJavaScript(`(async () => {
+        result = await mainWindow.webContents.executeJavaScript(
+          `(async () => {
           const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
           const q = (selector) => Array.from(document.querySelectorAll(selector));
           const report = {
@@ -656,14 +713,20 @@ function createWindow() {
             : [];
 
           return report;
-        })()`, true);
+        })()`,
+          true
+        );
       } catch (err) {
         error = err && err.stack ? err.stack : String(err);
       }
 
       const payload = { ok: !error, error, logs, result };
       try {
-        fs.writeFileSync(process.env.MYTASKS_SMOKE, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+        fs.writeFileSync(
+          process.env.MYTASKS_SMOKE,
+          `${JSON.stringify(payload, null, 2)}\n`,
+          'utf8'
+        );
         console.log(`Smoke-отчёт: ${process.env.MYTASKS_SMOKE}`);
       } catch (err) {
         console.error('Не удалось записать smoke-отчёт:', err);
@@ -704,7 +767,9 @@ app.on('before-quit', () => {
 });
 
 app.on('will-quit', () => {
-  try { globalShortcut.unregisterAll(); } catch (_) {}
+  try {
+    globalShortcut.unregisterAll();
+  } catch (_) {}
 });
 
 app.on('window-all-closed', () => {
@@ -763,7 +828,10 @@ app.whenReady().then(() => {
       autoUpdater.on('update-available', (info) => {
         console.log('Обновление найдено:', info.version);
         if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('update:available', { version: info.version, files: info.files });
+          mainWindow.webContents.send('update:available', {
+            version: info.version,
+            files: info.files
+          });
         }
       });
       autoUpdater.on('update-not-available', (info) => console.log('Обновлений нет'));
@@ -780,7 +848,9 @@ app.whenReady().then(() => {
       getTheme: () => store.getSettings().theme,
       getBounds: () => store.getSettings().miniX,
       onMove: (x) => {
-        try { store.updateSettings({ miniX: x }); } catch (_) {}
+        try {
+          store.updateSettings({ miniX: x });
+        } catch (_) {}
       }
     });
 

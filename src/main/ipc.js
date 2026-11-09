@@ -93,17 +93,31 @@ function registerIpc(deps) {
   });
 
   handle('subtask:update', async (_event, payload) => {
-    const task = store.updateSubtask(payload.taskId, payload.subtaskId, payload.patch || {}, payload.parentSubtaskId || null);
+    const task = store.updateSubtask(
+      payload.taskId,
+      payload.subtaskId,
+      payload.patch || {},
+      payload.parentSubtaskId || null
+    );
     return ok({ result: task });
   });
 
   handle('subtask:delete', async (_event, payload) => {
-    const task = store.deleteSubtask(payload.taskId, payload.subtaskId, payload.parentSubtaskId || null);
+    const task = store.deleteSubtask(
+      payload.taskId,
+      payload.subtaskId,
+      payload.parentSubtaskId || null
+    );
     return ok({ result: task });
   });
 
   handle('subtask:toggle', async (_event, payload) => {
-    const task = store.toggleSubtask(payload.taskId, payload.subtaskId, payload.done, payload.parentSubtaskId || null);
+    const task = store.toggleSubtask(
+      payload.taskId,
+      payload.subtaskId,
+      payload.done,
+      payload.parentSubtaskId || null
+    );
     return ok({ result: task });
   });
 
@@ -124,6 +138,16 @@ function registerIpc(deps) {
 
   handle('note:toggle', async (_event, payload) => {
     const note = store.toggleNote(payload.id, payload.done);
+    return ok({ result: note });
+  });
+
+  handle('note:archive', async (_event, payload) => {
+    const note = store.archiveNote(payload.id);
+    return ok({ result: note });
+  });
+
+  handle('note:unarchive', async (_event, payload) => {
+    const note = store.unarchiveNote(payload.id);
     return ok({ result: note });
   });
 
@@ -193,9 +217,7 @@ function registerIpc(deps) {
       autostart.setEnabled(next.autostart, next.startMinimized);
     }
 
-    if (
-      Object.prototype.hasOwnProperty.call(patch || {}, 'startMenuShortcut')
-    ) {
+    if (Object.prototype.hasOwnProperty.call(patch || {}, 'startMenuShortcut')) {
       autostart.setStartMenuShortcut(next.startMenuShortcut);
     }
 
