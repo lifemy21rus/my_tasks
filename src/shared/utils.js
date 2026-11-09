@@ -355,6 +355,14 @@
     return `${str.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
   }
 
+  // Представление горячей клавиши для отображения в интерфейсе:
+  // «CommandOrControl+Shift+Space» → «Ctrl + Shift + Space».
+  function formatHotkey(value) {
+    return String(value || '')
+      .replace(/CommandOrControl|CmdOrCtrl|Control/gi, 'Ctrl')
+      .replace(/\+/g, ' + ');
+  }
+
   return {
     MONTHS_SHORT,
     MONTHS_GEN,
@@ -398,6 +406,7 @@
     splitISODateTime,
     dueBucket,
     escapeHtml,
-    truncate
+    truncate,
+    formatHotkey
   };
 });

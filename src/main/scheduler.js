@@ -85,12 +85,16 @@ class Scheduler {
 
           if (plan.type === 'due') {
             if (this.notifications.showDue(task)) {
-              this.store.patchTaskInternal(task.id, { [plan.notifiedKey]: new Date(now).toISOString() });
+              this.store.patchTaskInternal(task.id, {
+                [plan.notifiedKey]: new Date(now).toISOString()
+              });
             }
           } else if (plan.type === 'before') {
             if (now >= plan.before) {
               if (this.notifications.showBefore(task, plan.offset)) {
-                this.store.patchTaskInternal(task.id, { [plan.notifiedKey]: new Date(now).toISOString() });
+                this.store.patchTaskInternal(task.id, {
+                  [plan.notifiedKey]: new Date(now).toISOString()
+                });
               }
             }
           }
@@ -109,11 +113,13 @@ class Scheduler {
     const iso = new Date(now).toISOString();
     const patch = { snoozedUntil: null };
 
-    if (plan.hasAdvance && now >= plan.before && !plan.notifiedBefore) {
-      patch.notifiedBeforeAt = iso;
-    }
-    if (plan.hasDue && now >= plan.due && !plan.notifiedDue) {
-      patch.notifiedDueAt = iso;
+    if (!plan.notified) {
+      if (plan.hasAdvance && now >= plan.before) {
+        patch.notifiedBeforeAt = iso;
+      }
+      if (plan.hasDue && now >= plan.due) {
+        patch.notifiedDueAt = iso;
+      }
     }
 
     this.store.patchTaskInternal(task.id, patch);

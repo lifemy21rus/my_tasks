@@ -370,12 +370,6 @@
     return state.data.tasks.find((t) => t.id === id) || null;
   }
 
-  function formatHotkey(value) {
-    return String(value || '')
-      .replace(/CommandOrControl|CmdOrCtrl|Control/gi, 'Ctrl')
-      .replace(/\+/g, ' + ');
-  }
-
   function applyTheme() {
     const theme = state.data.settings.theme || 'system';
     document.documentElement.dataset.theme = theme;
@@ -583,7 +577,12 @@
     edit.classList.add('small');
     edit.addEventListener('click', () => openNoteModal(note.id));
 
-    const remove = makeIconButton('delete-note', note.archived ? 'Восстановить заметку' : 'Переместить в архив', 'trash', 'danger');
+    const remove = makeIconButton(
+      'delete-note',
+      note.archived ? 'Восстановить заметку' : 'Переместить в архив',
+      'trash',
+      'danger'
+    );
     remove.classList.add('small');
     remove.addEventListener('click', () => archiveNoteWithConfirm(note.id));
 
@@ -748,8 +747,6 @@
       els.filterGroup.closest('.filters-row').hidden = false;
       els.sortSelect.closest('.sort-wrap').hidden = false;
       els.notesRow.hidden = true;
-      els.filterGroup.closest('.filters-row').hidden = false;
-      els.sortSelect.closest('.sort-wrap').hidden = false;
     }
 
     // Фильтр по приоритету относится только к задачам, у заметок его нет
@@ -1112,10 +1109,10 @@
     els.hotkeyStatus.title = !enabled
       ? 'Горячая клавиша отключена'
       : registered
-        ? `Горячая клавиша: ${formatHotkey(settings.hotkey)}`
+        ? `Горячая клавиша: ${U.formatHotkey(settings.hotkey)}`
         : 'Не удалось зарегистрировать горячую клавишу';
     els.hotkeyHint.textContent = enabled
-      ? formatHotkey(settings.hotkey)
+      ? U.formatHotkey(settings.hotkey)
       : 'Горячая клавиша отключена';
 
     if (state.view === 'notes') {
@@ -1638,7 +1635,7 @@
     els.settingDefaultRemind.value = String(settings.defaultRemindBefore);
     els.settingRemindAtDue.checked = Boolean(settings.defaultRemindAtDue);
     els.settingHotkeyEnabled.checked = Boolean(settings.hotkeyEnabled);
-    els.settingHotkeyInput.value = formatHotkey(settings.hotkey);
+    els.settingHotkeyInput.value = U.formatHotkey(settings.hotkey);
 
     $$('.theme-option', els.themeGrid).forEach((button) => {
       button.classList.toggle('is-active', button.dataset.theme === settings.theme);
@@ -1678,7 +1675,7 @@
     state.capturingHotkey = false;
     els.settingHotkeyInput.classList.remove('is-capturing');
     const settings = state.data.settings;
-    els.settingHotkeyInput.value = formatHotkey(settings.hotkey);
+    els.settingHotkeyInput.value = U.formatHotkey(settings.hotkey);
   }
 
   function hotkeyFromEvent(event) {
