@@ -75,6 +75,37 @@ test('adding subtask to completed parent reopens it', () => {
   assert.equal(current.completedAt, null);
 });
 
+test('subtasks are limited to two levels', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mytasks-'));
+  const store = new Store(dir, { isPackaged: false });
+
+  const task = store.addTask({
+    title: 'Уровни',
+    subtasks: [
+      {
+        title: 'Уровень 1',
+        subtasks: [
+          {
+            title: 'Уровень 2',
+            subtasks: [{ title: 'Уровень 3' }]
+          }
+        ]
+      }
+    ]
+  });
+
+  const current = store.getTasks().find((x) => x.id === task.id);
+  const level1 = current.subtasks[0];
+  const level2 = level1.subtasks[0];
+  assert.equal(level2.title, 'Уровень 2');
+  assert.equal(level2.subtasks.length, 0);
+
+  assert.throws(
+    () => store.addSubtask(task.id, 'Уровень 3', level2.id),
+    /Максимум два уровня подзадач/
+  );
+});
+
 test('deleting category moves tasks to "Без категории"', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mytasks-'));
   const store = new Store(dir, { isPackaged: false });

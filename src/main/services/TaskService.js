@@ -241,6 +241,9 @@ class TaskService {
     if (parentSubtaskId) {
       const parent = this.findSubtask(task.subtasks, parentSubtaskId);
       if (!parent) throw new Error('Родительская подзадача не найдена');
+      if (this.findSubtaskDepth(task.subtasks, parentSubtaskId) >= 2) {
+        throw new Error('Максимум два уровня подзадач');
+      }
       parent.subtasks.push(newSubtask);
     } else {
       task.subtasks.push(newSubtask);
@@ -263,6 +266,17 @@ class TaskService {
       }
     }
     return null;
+  }
+
+  findSubtaskDepth(subtasks, id, depth = 1) {
+    for (const subtask of subtasks) {
+      if (subtask.id === id) return depth;
+      if (subtask.subtasks) {
+        const found = this.findSubtaskDepth(subtask.subtasks, id, depth + 1);
+        if (found) return found;
+      }
+    }
+    return 0;
   }
 
   updateSubtask(taskId, subtaskId, patch = {}, parentSubtaskId = null) {

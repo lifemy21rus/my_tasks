@@ -230,7 +230,7 @@ function defaultData(isPackaged) {
   };
 }
 
-function normalizeSubtask(raw) {
+function normalizeSubtask(raw, depth = 1) {
   if (!raw || typeof raw !== 'object') return null;
   const title = normalizeTitle(raw.title);
   if (!title) return null;
@@ -239,7 +239,10 @@ function normalizeSubtask(raw) {
     title,
     done: Boolean(raw.done),
     createdAt: normalizeDate(raw.createdAt) || nowIso(),
-    subtasks: Array.isArray(raw.subtasks) ? raw.subtasks.map(normalizeSubtask).filter(Boolean) : []
+    subtasks:
+      depth < 2 && Array.isArray(raw.subtasks)
+        ? raw.subtasks.map((sub) => normalizeSubtask(sub, depth + 1)).filter(Boolean)
+        : []
   };
 }
 
@@ -312,7 +315,7 @@ function normalizeTask(raw, validCategoryIds) {
   const dueAt = normalizeDate(raw.dueAt);
   const done = Boolean(raw.done);
   const subtasks = Array.isArray(raw.subtasks)
-    ? raw.subtasks.map(normalizeSubtask).filter(Boolean)
+    ? raw.subtasks.map((sub) => normalizeSubtask(sub)).filter(Boolean)
     : [];
 
   const task = {
