@@ -49,18 +49,37 @@
       edit.addEventListener('click', () => onEditNote(note.id));
 
       const isArchived = Boolean(note.archived);
-      const remove = makeIconButton(
-        'delete-note',
-        isArchived ? 'Удалить заметку навсегда' : 'Переместить в архив',
-        'trash',
-        'danger'
-      );
-      remove.classList.add('small');
-      remove.addEventListener('click', () =>
-        isArchived ? onDeleteNote(note.id) : onArchiveNote(note.id)
-      );
+      if (isArchived) {
+        const restore = makeIconButton(
+          'restore-note',
+          'Восстановить из архива',
+          'undo'
+        );
+        restore.classList.add('small');
+        restore.addEventListener('click', () => onArchiveNote(note.id));
 
-      actions.append(edit, remove);
+        const remove = makeIconButton(
+          'delete-note',
+          'Удалить заметку навсегда',
+          'trash',
+          'danger'
+        );
+        remove.classList.add('small');
+        remove.addEventListener('click', () => onDeleteNote(note.id));
+
+        actions.append(edit, restore, remove);
+      } else {
+        const archive = makeIconButton(
+          'archive-note',
+          'Переместить в архив',
+          'trash',
+          'danger'
+        );
+        archive.classList.add('small');
+        archive.addEventListener('click', () => onArchiveNote(note.id));
+
+        actions.append(edit, archive);
+      }
       main.append(check, body, actions);
       card.appendChild(main);
 

@@ -14,6 +14,7 @@
       plus: '<path d="M12 5v14M5 12h14"/>',
       'chevron-down': '<path d="M6 9l6 6 6-6"/>',
       'chevron-right': '<path d="M9 6l6 6-6 6"/>',
+      undo: '<path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 7"/>',
       x: '<path d="M6 6l12 12M18 6L6 18"/>'
     };
     const button = document.createElement('button');
