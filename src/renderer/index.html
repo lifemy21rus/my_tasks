@@ -612,14 +612,15 @@
               </label>
             </div>
             <p class="field-hint">
-              При выполнении задачи создаётся следующее экземпляр по расписанию.
+              Интервал — через сколько дней, недель или месяцев повторять задачу (1 — каждый день,
+              неделю или месяц). При выполнении задачи создаётся следующий экземпляр по расписанию.
             </p>
           </div>
 
           <div class="field subtasks-field" id="subtasks-field">
             <div class="field-label-row">
               <span class="field-label"
-                >Подзадачи <span class="field-hint">один уровень</span></span
+                >Подзадачи <span class="field-hint">до двух уровней</span></span
               >
               <span class="subtask-counter" id="subtask-counter">0 из 0</span>
             </div>
@@ -1071,6 +1072,15 @@
     <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
 
     <script src="../shared/utils.js"></script>
+    <script src="./modules/dom.js"></script>
+    <script src="./modules/state-helpers.js"></script>
+    <script src="./modules/notes.js"></script>
+    <script src="./modules/categories.js"></script>
+    <script src="./modules/modals.js"></script>
+    <script src="./modules/task-modal.js"></script>
+    <script src="./modules/hotkeys.js"></script>
+    <script src="./modules/reminders.js"></script>
+    <script src="./modules/subtasks.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

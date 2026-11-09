@@ -1207,6 +1207,14 @@ button {
   height: 24px;
 }
 
+.subtask-row .subtask-toggle {
+  color: var(--text-muted);
+}
+
+.subtask-row .subtask-toggle:hover {
+  color: var(--text);
+}
+
 .subtask-form {
   display: flex;
   gap: 6px;
@@ -1226,6 +1234,13 @@ button {
 
 .subtask-form input:focus {
   border-color: var(--primary);
+}
+
+.subtask-form--nested {
+  margin-top: 4px;
+  margin-left: 16px;
+  padding: 0 4px 0 24px;
+  border-left: 2px solid var(--border-soft);
 }
 
 .subtasks-empty {

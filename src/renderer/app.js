@@ -3,6 +3,8 @@
 (function () {
   const U = window.AppUtils;
   const api = window.api;
+  const { $$, makeIconButton, cacheElements, setSvgIcon } = window.AppDOM;
+  const { getVisibleTasks, computeCounts, viewInfo } = window.AppStateHelpers;
 
   const state = {
     data: { settings: {}, categories: [], tasks: [], notes: [] },
@@ -14,6 +16,7 @@
     sort: 'smart',
     dueFilter: '',
     expanded: new Set(),
+    expandedNestedSubtasks: new Set(),
     draft: null,
     draftSubtaskAddTarget: null,
     categoryDraft: null,
@@ -28,136 +31,12 @@
     notesArchive: false
   };
 
-  const $ = (id) => document.getElementById(id);
-  const $$ = (selector, root) => Array.from((root || document).querySelectorAll(selector));
-
-  const els = {
-    categoryList: $('category-list'),
-    viewTitle: $('view-title'),
-    viewSub: $('view-sub'),
-    searchInput: $('search-input'),
-    searchClear: $('search-clear'),
-    filterGroup: $('filter-group'),
-    sortSelect: $('sort-select'),
-    taskList: $('task-list'),
-    emptyState: $('empty-state'),
-    emptyTitle: $('empty-title'),
-    emptyText: $('empty-text'),
-    emptyAddBtn: $('empty-add-btn'),
-    newTaskBtn: $('new-task-btn'),
-    settingsBtn: $('settings-btn'),
-    addCategoryBtn: $('add-category-btn'),
-    clearCompletedBtn: $('clear-completed-btn'),
-    statusLeft: $('status-left'),
-    hotkeyStatus: $('hotkey-status'),
-    hotkeyHint: $('hotkey-hint'),
-    modalBackdrop: $('modal-backdrop'),
-    taskModal: $('task-modal'),
-    taskModalTitle: $('task-modal-title'),
-    taskTitleInput: $('task-title-input'),
-    taskTitleError: $('task-title-error'),
-    taskDescInput: $('task-desc-input'),
-    taskDateInput: $('task-date-input'),
-    taskTimeInput: $('task-time-input'),
-    taskPriorityInput: $('task-priority-input'),
-    taskCategoryInput: $('task-category-input'),
-    taskEstimatedMinutes: $('task-estimated-minutes'),
-    taskActualMinutes: $('task-actual-minutes'),
-    taskTemplateSelect: $('task-template-select'),
-    taskSaveAsTemplateBtn: $('task-save-as-template-btn'),
-    clearDueBtn: $('clear-due-btn'),
-    quickDue: $('quick-due'),
-    reminderList: $('reminder-list'),
-    addReminderBtn: $('add-reminder-btn'),
-    taskColorGrid: $('task-color-grid'),
-    recurrenceTypeRadios: $$('input[name="recurrence-type"]'),
-    recurrenceOptions: $('recurrence-options'),
-    recurrenceInterval: $('recurrence-interval'),
-    recurrenceWeekdays: $('recurrence-weekdays'),
-    recurrenceWeekdayCheckboxes: $$('input[name="recurrence-weekday"]'),
-    recurrenceEndDate: $('recurrence-end-date'),
-    subtaskEditorList: $('subtask-editor-list'),
-    subtaskInput: $('subtask-input'),
-    subtaskAddBtn: $('subtask-add-btn'),
-    subtaskCounter: $('subtask-counter'),
-    taskSaveBtn: $('task-save-btn'),
-    taskCancelBtn: $('task-cancel-btn'),
-    taskDeleteBtn: $('task-delete-btn'),
-    taskModalClose: $('task-modal-close'),
-    newNoteBtn: $('new-note-btn'),
-    noteList: $('note-list'),
-    notesSection: $('notes-section'),
-    notesSectionHead: $('notes-section-head'),
-    notesSectionCount: $('notes-section-count'),
-    notesSectionAddBtn: $('notes-section-add-btn'),
-    notesViewActive: $('notes-view-active'),
-    notesViewArchived: $('notes-view-archived'),
-    notesRow: $('topbar-notes-row'),
-    noteModal: $('note-modal'),
-    noteModalTitle: $('note-modal-title'),
-    noteTitleInput: $('note-title-input'),
-    noteContentInput: $('note-content-input'),
-    noteTemplateSelect: $('note-template-select'),
-    noteTitleError: $('note-title-error'),
-    noteColorPicker: $('note-color-picker'),
-    noteSaveBtn: $('note-save-btn'),
-    noteSaveAsTemplateBtn: $('note-save-as-template-btn'),
-    noteCancelBtn: $('note-cancel-btn'),
-    noteDeleteBtn: $('note-delete-btn'),
-    noteModalClose: $('note-modal-close'),
-    confirmModal: $('confirm-modal'),
-    confirmTitle: $('confirm-title'),
-    confirmText: $('confirm-text'),
-    confirmOk: $('confirm-ok'),
-    confirmCancel: $('confirm-cancel'),
-    confirmClose: $('confirm-close'),
-    categoryModal: $('category-modal'),
-    categoryModalTitle: $('category-modal-title'),
-    categoryNameInput: $('category-name-input'),
-    categoryNameError: $('category-name-error'),
-    categoryColorGrid: $('category-color-grid'),
-    categoryDeleteBtn: $('category-delete-btn'),
-    categorySaveBtn: $('category-save-btn'),
-    categoryCancelBtn: $('category-cancel-btn'),
-    categoryModalClose: $('category-modal-close'),
-    priorityFilter: $('priority-filter'),
-    dueFilterSelect: $('due-filter'),
-    settingsModal: $('settings-modal'),
-    settingsDoneBtn: $('settings-done-btn'),
-    settingsModalClose: $('settings-modal-close'),
-    settingAutostart: $('setting-autostart'),
-    settingStartMinimized: $('setting-start-minimized'),
-    settingStartMenuShortcut: $('setting-start-menu-shortcut'),
-    settingMiniPanel: $('setting-mini-panel'),
-    settingMiniPanelAtStart: $('setting-mini-panel-at-start'),
-    settingMiniPanelTabs: $('setting-mini-panel-tabs'),
-    settingDataEncryption: $('setting-data-encryption'),
-    settingQuitOnClose: $('setting-quit-on-close'),
-    settingDefaultRemind: $('setting-default-remind'),
-    settingRemindAtDue: $('setting-remind-at-due'),
-    settingHotkeyEnabled: $('setting-hotkey-enabled'),
-    settingHotkeyInput: $('setting-hotkey-input'),
-    settingHotkeyCapture: $('setting-hotkey-capture'),
-    settingHotkeyReset: $('setting-hotkey-reset'),
-    themeGrid: $('theme-grid'),
-    testNotificationBtn: $('test-notification-btn'),
-    exportBtn: $('export-btn'),
-    exportCsvBtn: $('export-csv-btn'),
-    importBtn: $('import-btn'),
-    backupBtn: $('backup-btn'),
-    openFolderBtn: $('open-folder-btn'),
-    dataDirLabel: $('data-dir-label'),
-    versionLabel: $('version-label'),
-    checkUpdatesBtn: $('check-updates-btn'),
-    installUpdateBtn: $('install-update-btn'),
-    updateStatusNote: $('update-status-note'),
-    toastStack: $('toast-stack')
-  };
+  const els = cacheElements();
 
   const NOTE_COLORS = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffe66d', '#ff8c42'];
 
-  let editingNoteId = null;
-  let noteColor = NOTE_COLORS[0];
+  state.editingNoteId = null;
+  state.noteColor = NOTE_COLORS[0];
 
   function noteCount(n) {
     return U.noteCount(n);
@@ -176,56 +55,18 @@
     });
   }
 
-  function renderNotes() {
-    const notes = visibleNotes();
-    const hasSearch = Boolean(state.search.trim());
-
-    // В разделах «Все задачи» и по категории заметки показываются только при активном поиске
-    if ((state.view === 'all' || state.view === 'category') && !hasSearch) {
-      els.notesSection.hidden = true;
-      return;
-    }
-
-    if (state.view === 'notes') {
-      els.notesSectionHead.hidden = true;
-      els.notesSection.hidden = false;
-      els.notesSection.classList.add('notes-section-full');
-      els.noteList.textContent = '';
-      const fragment = document.createDocumentFragment();
-      for (const note of notes) fragment.appendChild(renderNoteCard(note));
-      els.noteList.appendChild(fragment);
-      return;
-    }
-
-    els.notesSection.classList.remove('notes-section-full');
-    els.notesSectionHead.hidden = false;
-    els.noteList.textContent = '';
-
-    if (notes.length === 0) {
-      els.notesSection.hidden = true;
-      return;
-    }
-
-    els.notesSection.hidden = false;
-    els.notesSectionCount.textContent = String(notes.length);
-
-    const fragment = document.createDocumentFragment();
-    for (const note of notes) fragment.appendChild(renderNoteCard(note));
-    els.noteList.appendChild(fragment);
-  }
-
   function renderNoteColors() {
     els.noteColorPicker.textContent = '';
     for (const color of NOTE_COLORS) {
       const swatch = document.createElement('button');
       swatch.type = 'button';
-      swatch.className = `color-swatch${color === noteColor ? ' is-active' : ''}`;
+      swatch.className = `color-swatch${color === state.noteColor ? ' is-active' : ''}`;
       swatch.style.background = color;
       swatch.dataset.color = color;
       swatch.title = color;
       swatch.setAttribute('aria-label', `Цвет ${color}`);
       swatch.addEventListener('click', () => {
-        noteColor = color;
+        state.noteColor = color;
         renderNoteColors();
       });
       els.noteColorPicker.appendChild(swatch);
@@ -264,8 +105,8 @@
 
   function openNoteModal(noteId = null) {
     const note = noteId ? state.data.notes.find((n) => n.id === noteId) : null;
-    editingNoteId = note ? note.id : null;
-    noteColor = note && note.color ? note.color : NOTE_COLORS[0];
+    state.editingNoteId = note ? note.id : null;
+    state.noteColor = note && note.color ? note.color : NOTE_COLORS[0];
 
     els.noteModalTitle.textContent = note ? 'Редактировать заметку' : 'Новая заметка';
     els.noteTitleInput.value = note ? note.title : '';
@@ -292,7 +133,7 @@
 
   function closeNoteModal() {
     els.noteModal.hidden = true;
-    editingNoteId = null;
+    state.editingNoteId = null;
     if (
       els.taskModal.hidden &&
       els.categoryModal.hidden &&
@@ -314,14 +155,14 @@
 
     els.noteTitleError.hidden = true;
     const content = els.noteContentInput.value;
-    const isNew = !editingNoteId;
-    const payload = { title, content, color: noteColor };
+    const isNew = !state.editingNoteId;
+    const payload = { title, content, color: state.noteColor };
 
     els.noteSaveBtn.disabled = true;
     try {
       const res = isNew
         ? await invoke(api.addNote(payload), 'Заметка добавлена')
-        : await invoke(api.updateNote(editingNoteId, payload), 'Заметка обновлена');
+        : await invoke(api.updateNote(state.editingNoteId, payload), 'Заметка обновлена');
       if (!res) return;
 
       closeNoteModal();
@@ -349,8 +190,6 @@
     if (res && !els.noteModal.hidden) closeNoteModal();
   }
 
-  let confirmResolver = null;
-  let snoozeMenu = null;
 
   /* ------------------------------- helpers ------------------------------- */
 
@@ -419,178 +258,106 @@
     }
   }
 
+  const notes = window.AppNotes.create({
+    els,
+    state,
+    visibleNotesFn: visibleNotes,
+    makeIconButton,
+    onEditNote: openNoteModal,
+    onArchiveNote: archiveNoteWithConfirm,
+    onToggleNote: (id, done) => invoke(api.toggleNote(id, done))
+  });
+
+  function renderNotes() {
+    return notes.renderNotes();
+  }
+
+  const categories = window.AppCategories.create({
+    els,
+    state,
+    U,
+    setSvgIcon
+  });
+
+  // Сохраняем ссылку для обратного вызова изменения цвета
+  categories._state = state;
+
+  const hotkeys = window.AppHotkeys.create({
+    els,
+    state,
+    U,
+    updateSetting
+  });
+
+  const modals = window.AppModals.create({
+    els,
+    state,
+    api,
+    invoke,
+    toast,
+    renderAll,
+    U,
+    $$,
+    stopHotkeyCapture: hotkeys.stopHotkeyCapture
+  });
+
+  const reminders = window.AppReminders.create({
+    els,
+    state,
+    api,
+    invoke,
+    currentTask,
+    U
+  });
+
+  const subtasks = window.AppSubtasks.create({
+    els,
+    state,
+    makeIconButton
+  });
+
+  const taskModal = window.AppTaskModal.create({
+    els,
+    state,
+    api,
+    invoke,
+    toast,
+    renderAll,
+    renderCategoryOptions,
+    renderDraftSubtasks,
+    updateSubtaskCounter,
+    loadReminderEditor,
+    loadRecurrenceEditor,
+    currentTask,
+    buildRecurrenceFromEditor,
+    confirmDialog: modals.confirmDialog,
+    renderTaskTemplates,
+    U
+  });
+
+  function renderCategories() {
+    return categories.renderCategories();
+  }
+
+  function renderCategoryOptions() {
+    return categories.renderCategoryOptions();
+  }
+
+  function renderColorGrid(container, selectedColor, onSelect) {
+    return categories.renderColorGrid(container, selectedColor, onSelect);
+  }
+
+  function renderCategoryColorGrid() {
+    renderColorGrid(els.categoryColorGrid, state.categoryDraft.color, (color) => {
+      state.categoryDraft.color = color;
+      renderCategoryColorGrid();
+    });
+  }
+
   /* ------------------------------ filtering ------------------------------ */
 
-  function dueMatchesView(task, view, now) {
-    if (view === 'inbox') return !task.dueAt;
-    if (!task.dueAt) return false;
-    const due = Date.parse(task.dueAt);
-    if (!Number.isFinite(due)) return false;
-    const dueDate = new Date(due);
-
-    if (view === 'today') return U.isSameDay(dueDate, now);
-    if (view === 'tomorrow') return U.isSameDay(dueDate, U.addDays(now, 1));
-    if (view === 'overdue') return due < now.getTime();
-    if (view === 'soon')
-      return due >= now.getTime() && due - now.getTime() <= 7 * 24 * 60 * 60 * 1000;
-    return false;
-  }
-
-  function getVisibleTasks() {
-    const now = new Date();
-    if (state.view === 'notes') return [];
-    let list = state.data.tasks.slice();
-
-    if (state.view === 'done') {
-      list = list.filter((task) => task.done);
-    } else if (state.view === 'category') {
-      list = list.filter((task) => task.categoryId === state.categoryId);
-      if (state.filter === 'active') list = list.filter((task) => !task.done);
-      else if (state.filter === 'done') list = list.filter((task) => task.done);
-    } else if (state.view === 'inbox') {
-      list = list.filter((task) => !task.dueAt);
-      if (state.filter === 'active') list = list.filter((task) => !task.done);
-      else if (state.filter === 'done') list = list.filter((task) => task.done);
-    } else {
-      if (state.view !== 'all') list = list.filter((task) => dueMatchesView(task, state.view, now));
-      if (state.filter === 'active') list = list.filter((task) => !task.done);
-      else if (state.filter === 'done') list = list.filter((task) => task.done);
-    }
-
-    const query = state.search.trim().toLowerCase();
-    if (query) {
-      list = list.filter((task) => {
-        return (
-          task.title.toLowerCase().includes(query) ||
-          (task.description || '').toLowerCase().includes(query) ||
-          (task.subtasks || []).some((sub) => sub.title.toLowerCase().includes(query))
-        );
-      });
-    }
-
-    if (state.priorityFilter) {
-      list = list.filter((task) => task.priority === state.priorityFilter);
-    }
-
-    if (state.dueFilter && state.view !== 'inbox' && state.view !== 'notes') {
-      list = list.filter((task) => dueMatchesView(task, state.dueFilter, now));
-    }
-
-    return list.sort(compareTasks);
-  }
-
-  function compareTasks(a, b) {
-    if (a.done !== b.done) return a.done ? 1 : -1;
-
-    if (state.sort === 'title') {
-      return a.title.localeCompare(b.title, 'ru', { sensitivity: 'base' });
-    }
-
-    if (state.sort === 'created') {
-      return Date.parse(b.createdAt) - Date.parse(a.createdAt);
-    }
-
-    if (state.sort === 'due') {
-      const ad = a.dueAt ? Date.parse(a.dueAt) : Infinity;
-      const bd = b.dueAt ? Date.parse(b.dueAt) : Infinity;
-      if (ad !== bd) return ad - bd;
-      return Date.parse(b.createdAt) - Date.parse(a.createdAt);
-    }
-
-    const now = Date.now();
-    const aOver = a.dueAt && Date.parse(a.dueAt) < now;
-    const bOver = b.dueAt && Date.parse(b.dueAt) < now;
-    if (aOver !== bOver) return aOver ? -1 : 1;
-
-    const pa = U.priorityRank(a.priority);
-    const pb = U.priorityRank(b.priority);
-    if (pa !== pb) return pa - pb;
-
-    const ad = a.dueAt ? Date.parse(a.dueAt) : Infinity;
-    const bd = b.dueAt ? Date.parse(b.dueAt) : Infinity;
-    if (ad !== bd) return ad - bd;
-    return Date.parse(b.createdAt) - Date.parse(a.createdAt);
-  }
-
-  function computeCounts() {
-    const now = new Date();
-    const tasks = state.data.tasks;
-    const active = tasks.filter((task) => !task.done);
-    return {
-      all: active.length,
-      inbox: active.filter((task) => !task.dueAt).length,
-      today: active.filter((task) => dueMatchesView(task, 'today', now)).length,
-      tomorrow: active.filter((task) => dueMatchesView(task, 'tomorrow', now)).length,
-      overdue: active.filter((task) => dueMatchesView(task, 'overdue', now)).length,
-      soon: active.filter((task) => dueMatchesView(task, 'soon', now)).length,
-      done: tasks.filter((task) => task.done).length,
-      doneActualMinutes: tasks
-        .filter((task) => task.done)
-        .reduce((sum, t) => sum + (t.actualMinutes || 0), 0),
-      notes: state.data.notes.filter((note) => !note.archived).length
-    };
-  }
 
   /* ------------------------------- render -------------------------------- */
-
-  function renderNoteCard(note) {
-    const card = document.createElement('article');
-    card.className = `note-card${note.done ? ' is-done' : ''}`;
-    card.dataset.id = note.id;
-    card.style.setProperty('--note-color', note.color);
-
-    const main = document.createElement('div');
-    main.className = 'note-main';
-
-    const check = document.createElement('input');
-    check.type = 'checkbox';
-    check.className = 'task-check note-check';
-    check.checked = Boolean(note.done);
-    check.title = note.done ? 'Вернуть заметку в работу' : 'Отметить заметку выполненной';
-    check.setAttribute('aria-label', `Выполнить заметку ${note.title}`);
-    check.addEventListener('change', () => {
-      invoke(api.toggleNote(note.id, check.checked));
-    });
-
-    const body = document.createElement('button');
-    body.type = 'button';
-    body.className = 'note-body';
-    body.title = 'Редактировать заметку';
-    body.addEventListener('click', () => openNoteModal(note.id));
-
-    const title = document.createElement('span');
-    title.className = 'note-card-title';
-    title.textContent = note.title;
-    body.appendChild(title);
-
-    if (note.content) {
-      const content = document.createElement('span');
-      content.className = 'note-card-content';
-      content.textContent = note.content;
-      body.appendChild(content);
-    }
-
-    const actions = document.createElement('div');
-    actions.className = 'note-actions';
-
-    const edit = makeIconButton('edit-note', 'Редактировать заметку', 'pencil');
-    edit.classList.add('small');
-    edit.addEventListener('click', () => openNoteModal(note.id));
-
-    const remove = makeIconButton(
-      'delete-note',
-      note.archived ? 'Восстановить заметку' : 'Переместить в архив',
-      'trash',
-      'danger'
-    );
-    remove.classList.add('small');
-    remove.addEventListener('click', () => archiveNoteWithConfirm(note.id));
-
-    actions.append(edit, remove);
-    main.append(check, body, actions);
-    card.appendChild(main);
-    return card;
-  }
 
   function renderAll() {
     renderSidebar();
@@ -603,7 +370,7 @@
   }
 
   function renderSidebar() {
-    const counts = computeCounts();
+    const counts = computeCounts(state, U);
 
     $$('.nav-item[data-view]').forEach((button) => {
       const view = button.dataset.view;
@@ -625,99 +392,13 @@
       dueSection.hidden = state.view === 'notes';
     }
 
-    renderCategories(counts);
+    renderCategories();
   }
 
-  function renderCategories(counts) {
-    if (state.view === 'notes') {
-      els.categoryList.textContent = '';
-      return;
-    }
-    const categories = state.data.categories;
-    els.categoryList.textContent = '';
-
-    if (categories.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'category-empty';
-      empty.textContent = 'Категорий пока нет. Нажмите +, чтобы создать.';
-      els.categoryList.appendChild(empty);
-      return;
-    }
-
-    const now = new Date();
-    for (const category of categories) {
-      const count = state.data.tasks.filter((task) => {
-        if (task.categoryId !== category.id || task.done) return false;
-        return true;
-      }).length;
-
-      const row = document.createElement('div');
-      row.className = `category-item${state.view === 'category' && state.categoryId === category.id ? ' is-active' : ''}`;
-
-      const pick = document.createElement('button');
-      pick.type = 'button';
-      pick.className = 'category-pick';
-      pick.dataset.action = 'pick-category';
-      pick.dataset.categoryId = category.id;
-
-      const dot = document.createElement('span');
-      dot.className = 'category-dot';
-      dot.style.background = category.color;
-      dot.style.color = category.color;
-
-      const name = document.createElement('span');
-      name.className = 'category-name';
-      name.textContent = category.name;
-
-      const badge = document.createElement('span');
-      badge.className = 'category-count';
-      badge.textContent = String(count);
-
-      pick.append(dot, name, badge);
-
-      const edit = document.createElement('button');
-      edit.type = 'button';
-      edit.className = 'icon-btn small category-edit';
-      edit.dataset.action = 'edit-category';
-      edit.dataset.categoryId = category.id;
-      edit.title = 'Изменить категорию';
-      edit.setAttribute('aria-label', `Изменить категорию ${category.name}`);
-      edit.innerHTML =
-        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
-
-      row.append(pick, edit);
-      els.categoryList.appendChild(row);
-    }
-
-    void now;
-    void counts;
-  }
-
-  function viewInfo() {
-    if (state.view === 'category') {
-      const category = currentCategory(state.categoryId);
-      return {
-        title: category ? category.name : 'Категория',
-        icon: 'category'
-      };
-    }
-    const map = {
-      all: ['Все задачи', ''],
-      inbox: ['Входящие', ''],
-      today: ['Сегодня', ''],
-      tomorrow: ['Завтра', ''],
-      overdue: ['Просроченные', ''],
-      soon: ['Ближайшая неделя', ''],
-      done: ['Выполненные', ''],
-      notes: ['Заметки', '']
-    };
-    const [title] = map[state.view] || map.all;
-    return { title };
-  }
 
   function renderHeader() {
-    const visible = getVisibleTasks();
-    const info = viewInfo();
+    const visible = getVisibleTasks(state, U);
+    const info = viewInfo(state);
     els.viewTitle.textContent = info.title;
 
     const isNotes = state.view === 'notes';
@@ -780,7 +461,7 @@
   }
 
   function renderTaskList() {
-    const tasks = getVisibleTasks();
+    const tasks = getVisibleTasks(state, U);
     els.taskList.textContent = '';
 
     if (state.view === 'notes') {
@@ -857,6 +538,33 @@
     }
     els.emptyTitle.textContent = 'Здесь пока пусто';
     els.emptyText.textContent = 'Добавьте первую задачу — и она появится в этом списке.';
+  }
+
+  function reminderHasFired(task) {
+    if (!task.dueAt) return false;
+    const due = Date.parse(task.dueAt);
+    if (!Number.isFinite(due)) return false;
+
+    const settings = (state.data && state.data.settings) || {};
+    let reminders;
+    if (Array.isArray(task.reminders) && task.reminders.length > 0) {
+      reminders = task.reminders;
+    } else {
+      reminders = [];
+      if (task.remindAtDue !== false) reminders.push({ offset: 0, type: 'due' });
+      let before = task.remindBefore;
+      if (before === null || before === undefined) before = settings.defaultRemindBefore;
+      if (Number.isFinite(Number(before)) && Number(before) >= 0) {
+        reminders.push({ offset: Number(before), type: 'before' });
+      }
+    }
+
+    const now = Date.now();
+    return reminders.some((reminder) => {
+      const offset = Number(reminder.offset) || 0;
+      const triggerAt = reminder.type === 'due' ? due : due - offset * 60000;
+      return Number.isFinite(triggerAt) && triggerAt <= now;
+    });
   }
 
   function renderTaskCard(task) {
@@ -986,7 +694,7 @@
     const actions = document.createElement('div');
     actions.className = 'task-actions';
 
-    if (task.dueAt && !task.done) {
+    if (task.dueAt && !task.done && reminderHasFired(task)) {
       actions.appendChild(makeIconButton('snooze', 'Отложить напоминание', 'clock'));
     }
     actions.appendChild(makeIconButton('edit', 'Редактировать', 'pencil'));
@@ -1002,29 +710,11 @@
     return card;
   }
 
-  function makeIconButton(action, title, icon, extraClass) {
-    const icons = {
-      clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 1.7"/>',
-      pencil: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
-      trash:
-        '<path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M10 11v5M14 11v5"/>',
-      plus: '<path d="M12 5v14M5 12h14"/>',
-      x: '<path d="M6 6l12 12M18 6L6 18"/>'
-    };
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `icon-btn${extraClass ? ` ${extraClass}` : ''}`;
-    button.dataset.action = action;
-    button.title = title;
-    button.setAttribute('aria-label', title);
-    button.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${icons[icon] || ''}</svg>`;
-    return button;
-  }
-
   function renderSubtasksPanel(task, depth = 0) {
     const panel = document.createElement('div');
     panel.className = 'subtasks-panel';
     panel.style.paddingLeft = `${depth * 20}px`;
+    const panelParentId = depth === 0 ? '' : task.id;
 
     const subs = task.subtasks || [];
     if (subs.length === 0) {
@@ -1044,7 +734,7 @@
       check.checked = subtask.done;
       check.dataset.action = 'toggle-subtask';
       check.dataset.subtaskId = subtask.id;
-      check.dataset.parentSubtaskId = task.id;
+      check.dataset.parentSubtaskId = panelParentId;
       check.title = subtask.done ? 'Снять отметку' : 'Отметить выполненной';
       check.setAttribute('aria-label', `Подзадача ${subtask.title}`);
 
@@ -1055,25 +745,43 @@
       const rowActions = document.createElement('div');
       rowActions.className = 'row-actions';
 
+      const children = subtask.subtasks || [];
+      const collapsed = !state.expandedNestedSubtasks.has(subtask.id);
+
+      let toggle = null;
+      if (children.length > 0) {
+        toggle = makeIconButton(
+          'toggle-sub-subtasks',
+          `${collapsed ? 'Показать' : 'Скрыть'} подзадачи (${children.length})`,
+          collapsed ? 'chevron-right' : 'chevron-down'
+        );
+        toggle.dataset.subtaskId = subtask.id;
+        toggle.classList.add('small', 'subtask-toggle');
+      }
+
       const edit = makeIconButton('edit-subtask', 'Переименовать', 'pencil');
       edit.dataset.subtaskId = subtask.id;
-      edit.dataset.parentSubtaskId = task.id;
+      edit.dataset.parentSubtaskId = panelParentId;
       const remove = makeIconButton('delete-subtask', 'Удалить подзадачу', 'trash', 'danger');
       remove.dataset.subtaskId = subtask.id;
-      remove.dataset.parentSubtaskId = task.id;
+      remove.dataset.parentSubtaskId = panelParentId;
 
       const addSub = makeIconButton('add-sub-subtask', 'Добавить подзадачу', 'plus');
       addSub.dataset.subtaskId = subtask.id;
-      addSub.dataset.parentSubtaskId = task.id;
+      addSub.dataset.parentSubtaskId = panelParentId;
       addSub.classList.add('small');
 
-      rowActions.append(edit, addSub, remove);
+      rowActions.append(edit);
+      if (depth === 0) rowActions.appendChild(addSub);
+      rowActions.appendChild(remove);
 
-      row.append(check, title, rowActions);
+      row.append(check);
+      if (toggle) row.append(toggle);
+      row.append(title, rowActions);
       panel.appendChild(row);
 
       // Рекурсивно рендерим вложенные подзадачи
-      if (subtask.subtasks && subtask.subtasks.length > 0) {
+      if (children.length > 0 && !collapsed) {
         panel.appendChild(renderSubtasksPanel(subtask, depth + 1));
       }
     }
@@ -1081,7 +789,7 @@
     const form = document.createElement('form');
     form.className = 'subtask-form';
     form.dataset.form = 'add-subtask';
-    form.dataset.parentSubtaskId = task.id;
+    form.dataset.parentSubtaskId = panelParentId;
 
     const input = document.createElement('input');
     input.type = 'text';
@@ -1099,6 +807,50 @@
     panel.appendChild(form);
 
     return panel;
+  }
+
+  function openInlineSubtaskForm(card, row, parentSubtaskId) {
+    if (!card || !row || !parentSubtaskId) return;
+
+    const selector = `form[data-form="add-subtask"][data-parent-subtask-id="${parentSubtaskId}"]`;
+    const existing = card.querySelector(selector);
+    if (existing) {
+      const input = existing.querySelector('input');
+      if (input) {
+        input.focus();
+        existing.scrollIntoView({ block: 'nearest' });
+      }
+      return;
+    }
+
+    const form = document.createElement('form');
+    form.className = 'subtask-form subtask-form--nested';
+    form.dataset.form = 'add-subtask';
+    form.dataset.parentSubtaskId = parentSubtaskId;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Добавить подзадачу…';
+    input.maxLength = 500;
+    input.autocomplete = 'off';
+    input.setAttribute('aria-label', 'Новая подзадача');
+
+    const add = document.createElement('button');
+    add.type = 'submit';
+    add.className = 'btn btn-ghost';
+    add.textContent = 'Добавить';
+
+    form.append(input, add);
+
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        form.remove();
+      }
+    });
+
+    row.after(form);
+    input.focus();
   }
 
   function renderHotkeyStatus() {
@@ -1120,7 +872,7 @@
       return;
     }
 
-    const visibleCount = getVisibleTasks().length;
+    const visibleCount = getVisibleTasks(state, U).length;
     const total = state.data.tasks.length;
     let text = total === visibleCount ? U.taskCount(total) : `Показано ${visibleCount} из ${total}`;
     if (state.view === 'notes') {
@@ -1131,7 +883,7 @@
     }
     els.statusLeft.textContent = text;
 
-    const counts = computeCounts();
+    const counts = computeCounts(state, U);
     if (counts.doneActualMinutes > 0) {
       els.statusLeft.textContent += ` · Затрачено: ${counts.doneActualMinutes} мин`;
     }
@@ -1160,241 +912,75 @@
   /* ------------------------------ task modal ------------------------------ */
 
   function openTaskModal(taskId, options = {}) {
-    const settings = state.data.settings;
-    const task = taskId ? currentTask(taskId) : null;
-    const defaults = settings.defaultRemindBefore;
-    const hasDefaultAdvance = Number.isFinite(Number(defaults)) && Number(defaults) >= 0;
-
-    if (task) {
-      const split = U.splitISODateTime(task.dueAt);
-      state.draft = {
-        id: task.id,
-        title: task.title,
-        description: task.description || '',
-        dueDate: split.date,
-        dueTime: task.dueAt ? split.time : '',
-        priority: task.priority,
-        color: task.color || null,
-        categoryId: task.categoryId || '',
-        estimatedMinutes: task.estimatedMinutes || null,
-        actualMinutes: task.actualMinutes || null,
-        reminders: task.reminders
-          ? task.reminders.map((r) => ({ offset: r.offset, type: r.type }))
-          : null,
-        recurrence: task.recurrence ? { ...task.recurrence } : null,
-        subtasks: (task.subtasks || []).map(mapDraftSubtask)
-      };
-      els.taskModalTitle.textContent = 'Редактировать задачу';
-      els.taskDeleteBtn.hidden = false;
-    } else {
-      const preset = options.preset || {};
-      const date = preset.date || '';
-      const defaultReminders = [
-        { offset: settings.defaultRemindBefore || 60, type: 'before' },
-        { offset: 0, type: 'due' }
-      ];
-      state.draft = {
-        id: null,
-        title: '',
-        description: '',
-        dueDate: date,
-        dueTime: date ? '18:00' : '',
-        priority: 'normal',
-        color: null,
-        estimatedMinutes: null,
-        actualMinutes: null,
-        categoryId: preset.categoryId || (state.view === 'category' ? state.categoryId : ''),
-        reminders: settings.defaultRemindAtDue !== false ? defaultReminders : null,
-        recurrence: null,
-        subtasks: []
-      };
-      els.taskModalTitle.textContent = 'Новая задача';
-      els.taskDeleteBtn.hidden = true;
+    try {
+      taskModal.openTaskModal(taskId, options);
+    } catch (err) {
+      toast('Ошибка открытия модалки задачи: ' + (err && err.message ? err.message : String(err)), 'error');
     }
-
-    els.taskTitleInput.value = state.draft.title;
-    els.taskDescInput.value = state.draft.description;
-    els.taskDateInput.value = state.draft.dueDate;
-    els.taskTimeInput.value = state.draft.dueTime || '18:00';
-    els.taskPriorityInput.value = state.draft.priority;
-    els.taskEstimatedMinutes.value = state.draft.estimatedMinutes ?? '';
-    els.taskActualMinutes.value = state.draft.actualMinutes ?? '';
-    loadReminderEditor(state.draft.id ? currentTask(state.draft.id) : state.draft);
-    loadRecurrenceEditor(state.draft.id ? currentTask(state.draft.id) : state.draft);
-    els.taskTitleError.hidden = true;
-
-    renderCategoryOptions();
-    renderDraftSubtasks();
-    updateSubtaskCounter();
-
-    state.taskColor = state.draft.color || null;
-    renderTaskColorGrid();
-    renderTaskTemplates();
-
-    els.modalBackdrop.hidden = false;
-    els.taskModal.hidden = false;
-    els.confirmModal.hidden = true;
-    els.categoryModal.hidden = true;
-    els.settingsModal.hidden = true;
-    els.noteModal.hidden = true;
-    setTimeout(() => els.taskTitleInput.focus(), 30);
   }
 
-  function renderCategoryOptions() {
-    const select = els.taskCategoryInput;
-    select.textContent = '';
-    const none = document.createElement('option');
-    none.value = '';
-    none.textContent = 'Без категории';
-    select.appendChild(none);
-    for (const category of state.data.categories) {
-      const option = document.createElement('option');
-      option.value = category.id;
-      option.textContent = category.name;
-      select.appendChild(option);
-    }
-    select.value = state.draft ? state.draft.categoryId : '';
-  }
 
   function renderTaskColorGrid() {
-    const TASK_COLORS = [
-      '#ef4444',
-      '#f97316',
-      '#f59e0b',
-      '#84cc16',
-      '#22c55e',
-      '#06b6d4',
-      '#3b82f6',
-      '#8b5cf6'
-    ];
-    els.taskColorGrid.textContent = '';
-    for (const color of TASK_COLORS) {
-      const swatch = document.createElement('button');
-      swatch.type = 'button';
-      swatch.className = `color-swatch${state.taskColor === color ? ' is-active' : ''}`;
-      swatch.style.background = color;
-      swatch.dataset.color = color;
-      swatch.title = color;
-      swatch.setAttribute('aria-label', `Цвет ${color}`);
-      swatch.addEventListener('click', () => {
-        state.taskColor = color;
-        renderTaskColorGrid();
-      });
-      els.taskColorGrid.appendChild(swatch);
-    }
+    taskModal.renderTaskColorGrid();
   }
 
-  function mapDraftSubtask(sub) {
-    return {
-      id: sub.id || null,
-      title: sub.title,
-      done: Boolean(sub.done),
-      subtasks: (sub.subtasks || []).map(mapDraftSubtask)
-    };
-  }
 
   function renderDraftSubtasks() {
-    const list = els.subtaskEditorList;
-    list.textContent = '';
-    const draft = state.draft;
-    if (!draft) return;
-
-    renderDraftSubtaskItems(draft.subtasks || [], list, null);
-    updateSubtaskCounter();
-  }
-
-  function renderDraftSubtaskItems(subtasks, container, parent) {
-    (subtasks || []).forEach((subtask) => {
-      const row = document.createElement('div');
-      row.className = `subtask-editor-row${subtask.done ? ' is-done' : ''}`;
-      if (parent) row.style.paddingLeft = '24px';
-
-      const check = document.createElement('input');
-      check.type = 'checkbox';
-      check.checked = subtask.done;
-      check.title = 'Выполнена';
-      check.addEventListener('change', () => {
-        subtask.done = check.checked;
-        renderDraftSubtasks();
-      });
-
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.maxLength = 500;
-      input.value = subtask.title;
-      input.placeholder = 'Название подзадачи';
-      input.addEventListener('input', () => {
-        subtask.title = input.value;
-      });
-
-      const actions = document.createElement('div');
-      actions.className = 'subtask-editor-actions';
-
-      const addSub = makeIconButton('add-draft-sub-subtask', 'Добавить подзадачу', 'plus');
-      addSub.classList.add('small');
-      addSub.addEventListener('click', (event) => {
-        event.stopPropagation();
-        state.draftSubtaskAddTarget = subtask;
-        if (!subtask.subtasks) subtask.subtasks = [];
-        els.subtaskInput.placeholder = `Подзадача для «${subtask.title}»…`;
-        els.subtaskInput.focus();
-      });
-
-      const remove = makeIconButton('remove-draft-subtask', 'Удалить подзадачу', 'x', 'danger');
-      remove.addEventListener('click', (event) => {
-        event.stopPropagation();
-        removeDraftSubtask(subtask, parent);
-        renderDraftSubtasks();
-      });
-
-      actions.append(addSub, remove);
-      row.append(check, input, actions);
-      container.appendChild(row);
-
-      if (subtask.subtasks && subtask.subtasks.length > 0) {
-        const nested = document.createElement('div');
-        nested.className = 'subtask-editor-nested';
-        renderDraftSubtaskItems(subtask.subtasks, nested, subtask);
-        container.appendChild(nested);
-      }
-    });
-  }
-
-  function removeDraftSubtask(subtask, parent) {
-    const target = parent ? parent.subtasks : state.draft.subtasks;
-    const idx = target.indexOf(subtask);
-    if (idx !== -1) target.splice(idx, 1);
+    return subtasks.renderDraftSubtasks();
   }
 
   function updateSubtaskCounter() {
-    const draft = state.draft;
-    if (!draft) {
-      els.subtaskCounter.textContent = '0 из 0';
-      return;
-    }
-    const done = (draft.subtasks || []).filter((sub) => sub.done && sub.title.trim()).length;
-    els.subtaskCounter.textContent = `${done} из ${(draft.subtasks || []).filter((sub) => sub.title.trim()).length}`;
+    return subtasks.updateSubtaskCounter();
   }
 
   function addDraftSubtask() {
-    const value = els.subtaskInput.value.trim();
-    if (!value || !state.draft) return;
-    const target = state.draftSubtaskAddTarget
-      ? state.draftSubtaskAddTarget.subtasks || (state.draftSubtaskAddTarget.subtasks = [])
-      : state.draft.subtasks;
-    target.push({ id: null, title: value, done: false, subtasks: [] });
-    state.draftSubtaskAddTarget = null;
-    els.subtaskInput.value = '';
-    els.subtaskInput.placeholder = 'Название подзадачи';
-    renderDraftSubtasks();
-    updateSubtaskCounter();
-    els.subtaskInput.focus();
+    return subtasks.addDraftSubtask();
   }
 
   function closeTaskModal() {
-    els.taskModal.hidden = true;
-    els.modalBackdrop.hidden = true;
-    state.draft = null;
+    taskModal.closeTaskModal();
+  }
+
+  function findNewSubtask(task, parentId, knownIds) {
+    if (!task) return null;
+    const container = parentId ? findSubtaskInTask(task, parentId) : task;
+    if (!container) return null;
+    return (container.subtasks || []).find((sub) => sub.id && !knownIds.has(sub.id)) || null;
+  }
+
+  async function syncSubtasks(taskId, drafts, existing, parentId = null) {
+    const draftList = (drafts || []).filter((sub) => (sub.title || '').trim());
+    const existingList = existing || [];
+    const knownIds = new Set(existingList.map((sub) => sub.id));
+    const draftIds = new Set(draftList.filter((sub) => sub.id).map((sub) => sub.id));
+
+    for (const before of existingList) {
+      if (!draftIds.has(before.id)) {
+        await api.deleteSubtask(taskId, before.id, parentId);
+      }
+    }
+
+    for (const sub of draftList) {
+      const title = sub.title.trim();
+      if (sub.id && knownIds.has(sub.id)) {
+        const before = existingList.find((item) => item.id === sub.id);
+        if (before.title !== title) {
+          await api.updateSubtask(taskId, sub.id, { title }, parentId);
+        }
+        if (Boolean(before.done) !== Boolean(sub.done)) {
+          await api.toggleSubtask(taskId, sub.id, Boolean(sub.done), parentId);
+        }
+        await syncSubtasks(taskId, sub.subtasks || [], before.subtasks || [], sub.id);
+      } else {
+        const res = await api.addSubtask(taskId, title, parentId);
+        if (!res || !res.ok) continue;
+        const added = findNewSubtask(res.result, parentId, knownIds);
+        if (!added) continue;
+        knownIds.add(added.id);
+        if (sub.done) await api.toggleSubtask(taskId, added.id, true, parentId);
+        await syncSubtasks(taskId, sub.subtasks || [], [], added.id);
+      }
+    }
   }
 
   async function saveTask() {
@@ -1459,35 +1045,12 @@
       const res = await invoke(api.updateTask(draft.id, patch));
       if (!res) return;
 
-      const original = (draft.subtasks || []).filter((sub) => sub.id);
-      const originalIds = new Set(original.map((sub) => sub.id));
-      const draftIds = new Set((draft.subtasks || []).filter((sub) => sub.id).map((sub) => sub.id));
-
-      for (const id of originalIds) {
-        if (!draftIds.has(id)) await api.deleteSubtask(draft.id, id);
-      }
-
-      for (const sub of draft.subtasks || []) {
-        if (!sub.title.trim()) continue;
-        if (sub.id) {
-          const before = original.find((item) => item.id === sub.id);
-          if (before && before.title !== sub.title) {
-            await api.updateSubtask(draft.id, sub.id, { title: sub.title.trim() });
-          }
-          if (before && before.done !== sub.done) {
-            await api.toggleSubtask(draft.id, sub.id, sub.done);
-          }
-        } else {
-          await api.addSubtask(draft.id, sub.title.trim());
-          if (sub.done) {
-            const snapshot = await api.getState();
-            applyState(snapshot);
-            const updated = currentTask(draft.id);
-            const added = updated && updated.subtasks[updated.subtasks.length - 1];
-            if (added) await api.toggleSubtask(draft.id, added.id, true);
-          }
-        }
-      }
+      const existing = currentTask(draft.id);
+      await syncSubtasks(
+        draft.id,
+        draft.subtasks || [],
+        (existing && existing.subtasks) || []
+      );
 
       const finalState = await api.getState();
       if (finalState && finalState.ok) {
@@ -1502,16 +1065,7 @@
   }
 
   async function deleteTaskWithConfirm(taskId) {
-    const task = currentTask(taskId);
-    if (!task) return;
-    const confirmed = await confirmDialog({
-      title: 'Удалить задачу?',
-      text: `«${task.title}» будет удалена без возможности отменить действие.`,
-      okText: 'Удалить'
-    });
-    if (!confirmed) return;
-    const res = await invoke(api.deleteTask(taskId), 'Задача удалена');
-    if (res) closeTaskModal();
+    taskModal.deleteTaskWithConfirm(taskId);
   }
 
   /* ----------------------------- category modal ---------------------------- */
@@ -1528,7 +1082,7 @@
     els.categoryNameInput.value = state.categoryDraft.name;
     els.categoryNameError.hidden = true;
     els.categoryDeleteBtn.hidden = !category;
-    renderColorGrid();
+    renderCategoryColorGrid();
 
     els.modalBackdrop.hidden = false;
     els.categoryModal.hidden = false;
@@ -1539,23 +1093,6 @@
     setTimeout(() => els.categoryNameInput.focus(), 30);
   }
 
-  function renderColorGrid() {
-    els.categoryColorGrid.textContent = '';
-    for (const color of U.CATEGORY_COLORS) {
-      const swatch = document.createElement('button');
-      swatch.type = 'button';
-      swatch.className = `color-swatch${state.categoryDraft.color === color ? ' is-active' : ''}`;
-      swatch.style.background = color;
-      swatch.dataset.color = color;
-      swatch.title = color;
-      swatch.setAttribute('aria-label', `Цвет ${color}`);
-      swatch.addEventListener('click', () => {
-        state.categoryDraft.color = color;
-        renderColorGrid();
-      });
-      els.categoryColorGrid.appendChild(swatch);
-    }
-  }
 
   function closeCategoryModal() {
     els.categoryModal.hidden = true;
@@ -1606,167 +1143,44 @@
   /* ------------------------------ settings -------------------------------- */
 
   function openSettings() {
-    renderSettings();
-    els.modalBackdrop.hidden = false;
-    els.settingsModal.hidden = false;
-    els.taskModal.hidden = true;
-    els.confirmModal.hidden = true;
-    els.categoryModal.hidden = true;
-    els.noteModal.hidden = true;
+    modals.openSettings();
   }
 
   function closeSettings() {
-    stopHotkeyCapture();
-    els.settingsModal.hidden = true;
-    els.modalBackdrop.hidden = true;
+    modals.closeSettings();
   }
 
   function renderSettings() {
-    const settings = state.data.settings;
-
-    els.settingAutostart.checked = Boolean(settings.autostart);
-    els.settingStartMinimized.checked = Boolean(settings.startMinimized);
-    els.settingStartMenuShortcut.checked = Boolean(settings.startMenuShortcut);
-    els.settingMiniPanel.checked = Boolean(settings.miniPanel);
-    els.settingMiniPanelAtStart.checked = Boolean(settings.miniPanelAtStart);
-    els.settingMiniPanelTabs.value = settings.miniPanelTabs || 'both';
-    els.settingDataEncryption.checked = Boolean(settings.dataEncryption);
-    els.settingQuitOnClose.checked = Boolean(settings.quitOnClose);
-    els.settingDefaultRemind.value = String(settings.defaultRemindBefore);
-    els.settingRemindAtDue.checked = Boolean(settings.defaultRemindAtDue);
-    els.settingHotkeyEnabled.checked = Boolean(settings.hotkeyEnabled);
-    els.settingHotkeyInput.value = U.formatHotkey(settings.hotkey);
-
-    $$('.theme-option', els.themeGrid).forEach((button) => {
-      button.classList.toggle('is-active', button.dataset.theme === settings.theme);
-    });
-
-    els.dataDirLabel.textContent = state.runtime.dataDir || '%APPDATA%\\Мои задачи';
-    els.versionLabel.textContent = state.runtime.version ? `Версия ${state.runtime.version}.` : '';
-    els.checkUpdatesBtn.hidden = false;
-    els.installUpdateBtn.hidden = true;
-    els.updateStatusNote.hidden = true;
+    modals.renderSettings();
   }
 
   async function updateSetting(patch, message) {
-    const res = await invoke(api.updateSettings(patch), message);
-    if (res) {
-      renderSettings();
-      renderHotkeyStatus();
-      if (res.runtime && Object.prototype.hasOwnProperty.call(res.runtime, 'hotkeyRegistered')) {
-        if (state.data.settings.hotkeyEnabled && !res.runtime.hotkeyRegistered) {
-          toast(
-            'Не удалось зарегистрировать горячую клавишу — возможно, она занята другой программой.',
-            'error'
-          );
-        }
-      }
-    }
+    const res = await modals.updateSetting(patch, message);
+    renderSettings();
+    renderHotkeyStatus();
+    return res;
   }
 
   function startHotkeyCapture() {
-    state.capturingHotkey = true;
-    els.settingHotkeyInput.classList.add('is-capturing');
-    els.settingHotkeyInput.value = 'Нажмите сочетание…';
-    els.settingHotkeyInput.focus();
+    hotkeys.startHotkeyCapture();
   }
 
   function stopHotkeyCapture() {
-    state.capturingHotkey = false;
-    els.settingHotkeyInput.classList.remove('is-capturing');
-    const settings = state.data.settings;
-    els.settingHotkeyInput.value = U.formatHotkey(settings.hotkey);
-  }
-
-  function hotkeyFromEvent(event) {
-    const key = event.key;
-    if (['Control', 'Shift', 'Alt', 'Meta'].includes(key)) return null;
-
-    let main = '';
-    if (key === ' ') main = 'Space';
-    else if (/^[a-zA-Z]$/.test(key)) main = key.toUpperCase();
-    else if (/^[0-9]$/.test(key)) main = key;
-    else if (/^F([1-9]|1[0-2])$/.test(key)) main = key;
-    else return null;
-
-    const parts = [];
-    if (event.ctrlKey) parts.push('Ctrl');
-    if (event.altKey) parts.push('Alt');
-    if (event.shiftKey) parts.push('Shift');
-
-    const isFunction = /^F/.test(main);
-    if (parts.length === 0 && !isFunction) return null;
-
-    return [...parts, main].join('+');
+    hotkeys.stopHotkeyCapture();
   }
 
   async function handleHotkeyKeydown(event) {
-    if (!state.capturingHotkey) return;
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (event.key === 'Escape') {
-      stopHotkeyCapture();
-      return;
-    }
-
-    const accelerator = hotkeyFromEvent(event);
-    if (!accelerator) return;
-
-    state.capturingHotkey = false;
-    els.settingHotkeyInput.classList.remove('is-capturing');
-    await updateSetting({ hotkey: accelerator }, 'Горячая клавиша сохранена');
+    hotkeys.handleHotkeyKeydown(event);
   }
 
   /* ------------------------------- confirm -------------------------------- */
 
   function confirmDialog({ title, text, okText }) {
-    state.confirmReturn = !els.taskModal.hidden
-      ? els.taskModal
-      : !els.categoryModal.hidden
-        ? els.categoryModal
-        : !els.settingsModal.hidden
-          ? els.settingsModal
-          : !els.noteModal.hidden
-            ? els.noteModal
-            : null;
-
-    els.confirmTitle.textContent = title || 'Подтверждение';
-    els.confirmText.textContent = text || '';
-    els.confirmOk.textContent = okText || 'Удалить';
-    els.modalBackdrop.hidden = false;
-    els.confirmModal.hidden = false;
-    els.taskModal.hidden = true;
-    els.categoryModal.hidden = true;
-    els.settingsModal.hidden = true;
-    els.noteModal.hidden = true;
-
-    return new Promise((resolve) => {
-      confirmResolver = resolve;
-    });
+    return modals.confirmDialog({ title, text, okText });
   }
 
   function closeConfirm(result) {
-    els.confirmModal.hidden = true;
-    if (!result && state.confirmReturn) {
-      els.modalBackdrop.hidden = false;
-      state.confirmReturn.hidden = false;
-    } else if (
-      !els.taskModal.hidden ||
-      !els.categoryModal.hidden ||
-      !els.settingsModal.hidden ||
-      !els.noteModal.hidden
-    ) {
-      els.modalBackdrop.hidden = false;
-    } else {
-      els.modalBackdrop.hidden = true;
-    }
-    state.confirmReturn = null;
-    if (confirmResolver) {
-      const resolve = confirmResolver;
-      confirmResolver = null;
-      resolve(result);
-    }
+    return modals.closeConfirm(result);
   }
 
   /* -------------------------------- actions ------------------------------- */
@@ -1777,186 +1191,38 @@
     await invoke(api.toggleTask(taskId, done), done ? 'Задача выполнена' : null);
   }
 
-  async function toggleSubtask(taskId, subtaskId, done) {
-    await invoke(api.toggleSubtask(taskId, subtaskId, done));
+  async function toggleSubtask(taskId, subtaskId, done, parentSubtaskId = null) {
+    await invoke(api.toggleSubtask(taskId, subtaskId, done, parentSubtaskId));
   }
 
-  async function deleteSubtask(taskId, subtaskId) {
-    await invoke(api.deleteSubtask(taskId, subtaskId));
+  async function deleteSubtask(taskId, subtaskId, parentSubtaskId = null) {
+    await invoke(api.deleteSubtask(taskId, subtaskId, parentSubtaskId));
   }
 
   function openSnoozeMenu(button, taskId) {
-    closeSnoozeMenu();
-    const task = currentTask(taskId);
-    if (!task) return;
-
-    const menu = document.createElement('div');
-    menu.className = 'snooze-menu';
-
-    const title = document.createElement('div');
-    title.className = 'menu-title';
-    title.textContent = 'Отложить напоминание';
-    menu.appendChild(title);
-
-    const now = Date.now();
-    const tomorrow = U.addDays(U.startOfDay(new Date()), 1);
-    tomorrow.setHours(9, 0, 0, 0);
-
-    const options = [
-      { label: 'Через 10 минут', until: new Date(now + 10 * 60000) },
-      { label: 'Через 1 час', until: new Date(now + 60 * 60000) },
-      { label: 'Завтра в 09:00', until: tomorrow }
-    ];
-
-    for (const option of options) {
-      const item = document.createElement('button');
-      item.type = 'button';
-      item.textContent = option.label;
-      item.addEventListener('click', async () => {
-        closeSnoozeMenu();
-        await invoke(
-          api.snoozeTask(taskId, option.until.toISOString()),
-          `Напоминание отложено: ${option.label.toLowerCase()}`
-        );
-      });
-      menu.appendChild(item);
-    }
-
-    document.body.appendChild(menu);
-    const rect = button.getBoundingClientRect();
-    const menuRect = menu.getBoundingClientRect();
-    let left = rect.right - menuRect.width;
-    let top = rect.bottom + 6;
-    if (left < 8) left = 8;
-    if (top + menuRect.height > window.innerHeight - 8) top = rect.top - menuRect.height - 6;
-    menu.style.left = `${left}px`;
-    menu.style.top = `${top}px`;
-    snoozeMenu = menu;
+    return reminders.openSnoozeMenu(button, taskId);
   }
 
   function closeSnoozeMenu() {
-    if (snoozeMenu) {
-      snoozeMenu.remove();
-      snoozeMenu = null;
-    }
+    return reminders.closeSnoozeMenu();
   }
 
   /* -------------------------------- reminder editor -------------------------------- */
 
-  function reminderLabel(r) {
-    const typeLabel = r.type === 'due' ? 'в момент срока' : `за ${U.formatDuration(r.offset)}`;
-    return typeLabel;
-  }
-
-  function renderReminderEditor() {
-    els.reminderList.textContent = '';
-    if (state.reminderEditor.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'reminder-empty';
-      empty.textContent = 'Напоминания не настроены';
-      els.reminderList.appendChild(empty);
-      return;
-    }
-    state.reminderEditor.forEach((r, index) => {
-      const item = document.createElement('div');
-      item.className = 'reminder-item';
-      const typeBadge = document.createElement('span');
-      typeBadge.className = `reminder-type ${r.type}`;
-      typeBadge.textContent = r.type === 'due' ? 'срок' : 'заранее';
-      const value = document.createElement('span');
-      value.className = 'reminder-value';
-      value.textContent = reminderLabel(r);
-      const remove = document.createElement('button');
-      remove.type = 'button';
-      remove.className = 'btn btn-ghost btn-sm reminder-remove';
-      remove.title = 'Удалить напоминание';
-      remove.textContent = 'Удалить';
-      remove.addEventListener('click', () => {
-        state.reminderEditor.splice(index, 1);
-        renderReminderEditor();
-      });
-      item.append(typeBadge, value, remove);
-      els.reminderList.appendChild(item);
-    });
-  }
-
   function addReminderEditor() {
-    const existingTypes = new Set(state.reminderEditor.map((r) => r.type));
-    let type = 'before';
-    let offset = 60;
-    if (!existingTypes.has('due')) {
-      type = 'due';
-      offset = 0;
-    } else if (!existingTypes.has('before')) {
-      type = 'before';
-      offset = 60;
-    } else {
-      type = 'before';
-      offset = 60;
-    }
-    state.reminderEditor.push({ offset, type });
-    renderReminderEditor();
+    return reminders.addReminderEditor();
   }
 
   function loadReminderEditor(task) {
-    if (task && Array.isArray(task.reminders) && task.reminders.length > 0) {
-      state.reminderEditor = task.reminders.map((r) => ({
-        offset: Number(r.offset) || 0,
-        type: r.type
-      }));
-    } else {
-      // По умолчанию: за 1 час + в момент срока (как было раньше)
-      state.reminderEditor = [
-        { offset: 60, type: 'before' },
-        { offset: 0, type: 'due' }
-      ];
-    }
-    renderReminderEditor();
+    return reminders.loadReminderEditor(task);
   }
 
   function loadRecurrenceEditor(task) {
-    els.recurrenceTypeRadios.forEach((radio) => {
-      radio.checked = false;
-    });
-    const rec = task && task.recurrence ? task.recurrence : null;
-    if (rec) {
-      const radio = Array.from(els.recurrenceTypeRadios).find((r) => r.value === rec.type);
-      if (radio) radio.checked = true;
-      els.recurrenceInterval.value = rec.interval || 1;
-      els.recurrenceEndDate.value = rec.endDate ? rec.endDate.slice(0, 10) : '';
-      if (rec.type === 'weekly') {
-        els.recurrenceWeekdays.hidden = false;
-        const days = new Set(rec.daysOfWeek || []);
-        els.recurrenceWeekdayCheckboxes.forEach((cb) => {
-          cb.checked = days.has(Number(cb.value));
-        });
-      } else {
-        els.recurrenceWeekdays.hidden = true;
-      }
-    } else {
-      els.recurrenceTypeRadios[0].checked = true;
-      els.recurrenceInterval.value = 1;
-      els.recurrenceEndDate.value = '';
-      els.recurrenceWeekdays.hidden = true;
-    }
-    els.recurrenceOptions.hidden = !rec || rec.type === 'none';
+    return reminders.loadRecurrenceEditor(task);
   }
 
   function buildRecurrenceFromEditor() {
-    const checked = Array.from(els.recurrenceTypeRadios).find((r) => r.checked);
-    if (!checked || checked.value === 'none') return null;
-    const type = checked.value;
-    const recurrence = { type, interval: Math.max(1, Number(els.recurrenceInterval.value) || 1) };
-    if (type === 'weekly') {
-      const days = [];
-      els.recurrenceWeekdayCheckboxes.forEach((cb) => {
-        if (cb.checked) days.push(Number(cb.value));
-      });
-      if (days.length > 0) recurrence.daysOfWeek = days;
-    }
-    const end = els.recurrenceEndDate.value;
-    if (end) recurrence.endDate = `${end}T00:00:00.000Z`;
-    return recurrence;
+    return reminders.buildRecurrenceFromEditor();
   }
 
   /* -------------------------------- events -------------------------------- */
@@ -2094,6 +1360,11 @@
           if (state.expanded.has(taskId)) state.expanded.delete(taskId);
           else state.expanded.add(taskId);
           renderTaskList();
+        } else if (action === 'toggle-sub-subtasks') {
+          const subtaskId = button.dataset.subtaskId;
+          if (state.expandedNestedSubtasks.has(subtaskId)) state.expandedNestedSubtasks.delete(subtaskId);
+          else state.expandedNestedSubtasks.add(subtaskId);
+          renderTaskList();
         } else if (action === 'edit-subtask') {
           startInlineSubtaskEdit(
             card,
@@ -2103,52 +1374,7 @@
         } else if (action === 'delete-subtask') {
           deleteSubtask(taskId, button.dataset.subtaskId, button.dataset.parentSubtaskId || null);
         } else if (action === 'add-sub-subtask') {
-          const parentSubtaskId = button.dataset.subtaskId;
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.placeholder = 'Новая подзадача…';
-          input.maxLength = 500;
-          input.autocomplete = 'off';
-          button.replaceWith(input);
-          input.focus();
-          input.addEventListener('blur', () => {
-            if (input.value.trim()) {
-              invoke(
-                api.addSubtask(card.dataset.id, input.value.trim(), parentSubtaskId),
-                'Подзадача добавлена'
-              );
-            }
-            button = makeIconButton('add-sub-subtask', 'Добавить подзадачу', 'plus');
-            button.dataset.subtaskId = parentSubtaskId;
-            button.dataset.parentSubtaskId = card.dataset.id;
-            button.classList.add('small');
-            input.replaceWith(button);
-            button.addEventListener('click', (e) => {
-              // handled by delegation
-            });
-          });
-          input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              if (input.value.trim()) {
-                invoke(
-                  api.addSubtask(card.dataset.id, input.value.trim(), parentSubtaskId),
-                  'Подзадача добавлена'
-                );
-              }
-              const newBtn = makeIconButton('add-sub-subtask', 'Добавить подзадачу', 'plus');
-              newBtn.dataset.subtaskId = parentSubtaskId;
-              newBtn.dataset.parentSubtaskId = card.dataset.id;
-              newBtn.classList.add('small');
-              input.replaceWith(newBtn);
-            } else if (e.key === 'Escape') {
-              const newBtn = makeIconButton('add-sub-subtask', 'Добавить подзадачу', 'plus');
-              newBtn.dataset.subtaskId = parentSubtaskId;
-              newBtn.dataset.parentSubtaskId = card.dataset.id;
-              newBtn.classList.add('small');
-              input.replaceWith(newBtn);
-            }
-          });
+          openInlineSubtaskForm(card, button.closest('.subtask-row'), button.dataset.subtaskId);
         }
         return;
       }
@@ -2177,8 +1403,10 @@
       const input = form.querySelector('input');
       const value = input.value.trim();
       if (!card || !value) return;
+      const parentSubtaskId = form.dataset.parentSubtaskId || null;
+      if (parentSubtaskId) state.expandedNestedSubtasks.add(parentSubtaskId);
       invoke(
-        api.addSubtask(card.dataset.id, value, form.dataset.parentSubtaskId || null),
+        api.addSubtask(card.dataset.id, value, parentSubtaskId),
         'Подзадача добавлена'
       );
     });
@@ -2250,7 +1478,7 @@
     els.noteCancelBtn.addEventListener('click', closeNoteModal);
     els.noteModalClose.addEventListener('click', closeNoteModal);
     els.noteDeleteBtn.addEventListener('click', () => {
-      if (editingNoteId) archiveNoteWithConfirm(editingNoteId);
+      if (state.editingNoteId) archiveNoteWithConfirm(state.editingNoteId);
     });
     els.noteTitleInput.addEventListener('input', () => {
       els.noteTitleError.hidden = true;
@@ -2493,7 +1721,7 @@
 
     document.addEventListener('mousedown', (event) => {
       if (
-        snoozeMenu &&
+        state.snoozeMenu &&
         !event.target.closest('.snooze-menu') &&
         !event.target.closest('[data-action="snooze"]')
       ) {
@@ -2503,7 +1731,7 @@
 
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
-        if (snoozeMenu) {
+        if (state.snoozeMenu) {
           closeSnoozeMenu();
           return;
         }
