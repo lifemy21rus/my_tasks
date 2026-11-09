@@ -345,11 +345,13 @@ button {
 .category-edit {
   flex: none;
   margin-right: 3px;
-  opacity: 0;
+  opacity: 0.55;
 }
 
 .category-item:hover .category-edit,
-.category-item:focus-within .category-edit {
+.category-item:focus-within .category-edit,
+.category-edit:hover,
+.category-edit:focus-visible {
   opacity: 1;
 }
 

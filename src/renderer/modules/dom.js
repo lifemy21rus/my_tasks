@@ -37,9 +37,19 @@
   svg.setAttribute('stroke-linecap', 'round');
   svg.setAttribute('stroke-linejoin', 'round');
   if (paths) {
-    const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    pathEl.setAttribute('d', paths);
-    svg.appendChild(pathEl);
+    if (typeof paths === 'string' && paths.trim().startsWith('<')) {
+      svg.innerHTML = paths;
+    } else if (Array.isArray(paths)) {
+      for (const d of paths) {
+        const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        pathEl.setAttribute('d', d);
+        svg.appendChild(pathEl);
+      }
+    } else {
+      const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      pathEl.setAttribute('d', paths);
+      svg.appendChild(pathEl);
+    }
   }
   container.appendChild(svg);
 }

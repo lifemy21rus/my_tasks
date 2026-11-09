@@ -272,16 +272,6 @@
     return notes.renderNotes();
   }
 
-  const categories = window.AppCategories.create({
-    els,
-    state,
-    U,
-    setSvgIcon
-  });
-
-  // Сохраняем ссылку для обратного вызова изменения цвета
-  categories._state = state;
-
   const hotkeys = window.AppHotkeys.create({
     els,
     state,
@@ -300,6 +290,20 @@
     $$,
     stopHotkeyCapture: hotkeys.stopHotkeyCapture
   });
+
+  const categories = window.AppCategories.create({
+    els,
+    state,
+    U,
+    setSvgIcon,
+    api,
+    invoke,
+    confirmDialog: modals.confirmDialog,
+    currentCategory
+  });
+
+  // Сохраняем ссылку для обратного вызова изменения цвета
+  categories._state = state;
 
   const reminders = window.AppReminders.create({
     els,
@@ -343,15 +347,8 @@
     return categories.renderCategoryOptions();
   }
 
-  function renderColorGrid(container, selectedColor, onSelect) {
-    return categories.renderColorGrid(container, selectedColor, onSelect);
-  }
-
   function renderCategoryColorGrid() {
-    renderColorGrid(els.categoryColorGrid, state.categoryDraft.color, (color) => {
-      state.categoryDraft.color = color;
-      renderCategoryColorGrid();
-    });
+    return categories.renderCategoryColorGrid();
   }
 
   /* ------------------------------ filtering ------------------------------ */
@@ -1071,73 +1068,19 @@
   /* ----------------------------- category modal ---------------------------- */
 
   function openCategoryModal(categoryId) {
-    const category = categoryId ? currentCategory(categoryId) : null;
-    state.categoryDraft = {
-      id: category ? category.id : null,
-      name: category ? category.name : '',
-      color: category ? category.color : U.CATEGORY_COLORS[0]
-    };
-
-    els.categoryModalTitle.textContent = category ? 'Изменить категорию' : 'Новая категория';
-    els.categoryNameInput.value = state.categoryDraft.name;
-    els.categoryNameError.hidden = true;
-    els.categoryDeleteBtn.hidden = !category;
-    renderCategoryColorGrid();
-
-    els.modalBackdrop.hidden = false;
-    els.categoryModal.hidden = false;
-    els.taskModal.hidden = true;
-    els.confirmModal.hidden = true;
-    els.settingsModal.hidden = true;
-    els.noteModal.hidden = true;
-    setTimeout(() => els.categoryNameInput.focus(), 30);
+    return categories.openCategoryModal(categoryId);
   }
 
-
   function closeCategoryModal() {
-    els.categoryModal.hidden = true;
-    els.modalBackdrop.hidden = true;
-    state.categoryDraft = null;
+    return categories.closeCategoryModal();
   }
 
   async function saveCategory() {
-    const draft = state.categoryDraft;
-    if (!draft) return;
-    const name = els.categoryNameInput.value.trim();
-    if (!name) {
-      els.categoryNameError.textContent = 'Введите название категории';
-      els.categoryNameError.hidden = false;
-      els.categoryNameInput.focus();
-      return;
-    }
-
-    if (draft.id) {
-      const res = await invoke(
-        api.updateCategory(draft.id, { name, color: draft.color }),
-        'Категория обновлена'
-      );
-      if (res) closeCategoryModal();
-    } else {
-      const res = await invoke(api.addCategory({ name, color: draft.color }), 'Категория создана');
-      if (res) closeCategoryModal();
-    }
+    return categories.saveCategory();
   }
 
   async function deleteCategoryWithConfirm() {
-    const draft = state.categoryDraft;
-    if (!draft || !draft.id) return;
-    const confirmed = await confirmDialog({
-      title: 'Удалить категорию?',
-      text: 'Задачи останутся, но перейдут в «Без категории».',
-      okText: 'Удалить'
-    });
-    if (!confirmed) return;
-    if (state.view === 'category' && state.categoryId === draft.id) {
-      state.view = 'all';
-      state.categoryId = null;
-    }
-    const res = await invoke(api.deleteCategory(draft.id), 'Категория удалена');
-    if (res) closeCategoryModal();
+    return categories.deleteCategoryWithConfirm();
   }
 
   /* ------------------------------ settings -------------------------------- */
