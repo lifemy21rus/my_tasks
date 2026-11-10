@@ -1,4 +1,4 @@
-# Мои задачи
+﻿# Планировщик
 
 ![Windows](https://img.shields.io/badge/platform-Windows-blue)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)

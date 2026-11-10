@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const fs = require('fs');
 const path = require('path');
@@ -13,7 +13,7 @@ function getShortcutPath() {
     'Start Menu',
     'Programs',
     'Startup',
-    'MyTasks.lnk'
+    'Планировщик.lnk'
   );
 }
 
@@ -25,7 +25,7 @@ function getStartMenuShortcutPath() {
     'Windows',
     'Start Menu',
     'Programs',
-    'MyTasks.lnk'
+    'Планировщик.lnk'
   );
 }
 
@@ -71,7 +71,7 @@ function setEnabled(enabled, startMinimized) {
     target: process.execPath,
     args,
     cwd,
-    description: 'Мои задачи',
+    description: 'Планировщик',
     icon,
     iconIndex: 0,
     appUserModelId: 'com.mytasks.app'
@@ -161,3 +161,5 @@ function setStartMenuShortcut(enabled) {
 }
 
 module.exports = { getShortcutPath, isEnabled, setEnabled, getStartMenuShortcutPath, isStartMenuShortcutEnabled, setStartMenuShortcut };
+
+

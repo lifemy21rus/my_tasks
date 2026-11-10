@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const { Notification } = require('electron');
 const utils = require('../shared/utils');
@@ -152,3 +152,6 @@ class Notifications {
 }
 
 module.exports = { Notifications };
+
+
+

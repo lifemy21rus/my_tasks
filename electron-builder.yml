@@ -1,5 +1,5 @@
 appId: com.mytasks.app
-productName: Мои задачи
+productName: Планировщик
 copyright: MyTasks
 
 directories:
@@ -29,7 +29,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Мои задачи
+  shortcutName: Планировщик
   deleteAppDataOnUninstall: false
   # Ярлык в меню «Пуск» важен для надёжной работы уведомлений Windows:
   # система привязывает уведомления к приложению через ярлык.

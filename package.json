@@ -1,6 +1,6 @@
 {
   "name": "my-tasks",
-  "productName": "Мои задачи",
+  "productName": "Планировщик",
   "version": "1.0.3",
   "description": "Локальный планировщик задач для Windows",
   "main": "src/main/main.js",

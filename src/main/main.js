@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, screen } = require('electron');
 const path = require('path');
@@ -242,7 +242,7 @@ function createWindow() {
     show: false,
     autoHideMenuBar: true,
     title: 'Планировщик',
-    icon: loadIcon('icon.png'),
+    icon: loadIcon(process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -416,7 +416,7 @@ app.whenReady().then(() => {
 
     miniPanel = new MiniPanel({
       preloadPath: path.join(__dirname, 'preload.js'),
-      icon: loadIcon('icon.png'),
+      icon: loadIcon(process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
       getTheme: () => store.getSettings().theme,
       getBounds: () => store.getSettings().miniX,
       onMove: (x) => {
@@ -486,3 +486,4 @@ app.whenReady().then(() => {
     app.quit();
   }
 });
+

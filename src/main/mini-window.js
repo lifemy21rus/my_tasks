@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const path = require('path');
 const { BrowserWindow, screen, nativeTheme } = require('electron');
@@ -173,3 +173,4 @@ class MiniPanel {
 }
 
 module.exports = { MiniPanel, MINI_WIDTH, backgroundColorFor };
+
