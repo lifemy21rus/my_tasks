@@ -22,7 +22,7 @@ jobs:
         run: npm ci
 
       - name: Сборка дистрибутивов (NSIS + портативная версия)
-        run: npm run dist
+        run: npm run dist -- --publish never
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
