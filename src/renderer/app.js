@@ -42,15 +42,21 @@
 
   function visibleNotes() {
     const query = state.search.trim().toLowerCase();
-    return state.data.notes.filter((note) => {
-      if (state.notesArchive && !note.archived) return false;
-      if (!state.notesArchive && note.archived) return false;
-      if (!query) return true;
-      return (
-        note.title.toLowerCase().includes(query) ||
-        (note.content || '').toLowerCase().includes(query)
-      );
-    });
+    return state.data.notes
+      .filter((note) => {
+        if (state.notesArchive && !note.archived) return false;
+        if (!state.notesArchive && note.archived) return false;
+        if (!query) return true;
+        return (
+          note.title.toLowerCase().includes(query) ||
+          (note.content || '').toLowerCase().includes(query)
+        );
+      })
+      .sort((a, b) => {
+        const at = Date.parse(a.updatedAt || a.createdAt || 0) || 0;
+        const bt = Date.parse(b.updatedAt || b.createdAt || 0) || 0;
+        return bt - at;
+      });
   }
 
   function openNoteModal(noteId = null) {
