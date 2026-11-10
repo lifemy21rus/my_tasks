@@ -300,7 +300,11 @@
     makeIconButton,
     getVisibleTasks,
     visibleNotes,
-    currentCategory
+    currentCategory,
+    currentTask,
+    invoke,
+    api,
+    renderTaskList: () => taskList.renderTaskList()
   });
 
   function renderTaskList() {
@@ -309,6 +313,10 @@
 
   function openInlineSubtaskForm(card, row, parentSubtaskId) {
     return taskList.openInlineSubtaskForm(card, row, parentSubtaskId);
+  }
+
+  function startInlineSubtaskEdit(card, subtaskId, parentSubtaskId = null) {
+    return taskList.startInlineSubtaskEdit(card, subtaskId, parentSubtaskId);
   }
 
   function renderHotkeyStatus() {
@@ -351,6 +359,17 @@
 
   function closeTaskModal() {
     taskModal.closeTaskModal();
+  }
+
+  function findSubtaskInTask(task, subtaskId) {
+    for (const sub of task.subtasks || []) {
+      if (sub.id === subtaskId) return sub;
+      if (sub.subtasks) {
+        const found = findSubtaskInTask(sub, subtaskId);
+        if (found) return found;
+      }
+    }
+    return null;
   }
 
   function findNewSubtask(task, parentId, knownIds) {
@@ -1111,66 +1130,7 @@
     }
   }
 
-  function startInlineSubtaskEdit(card, subtaskId, parentSubtaskId = null) {
-    const task = currentTask(card.dataset.id);
-    if (!task) return;
-    const subtask = findSubtaskInTask(task, subtaskId);
-    if (!subtask) return;
 
-    const row = card.querySelector(
-      `[data-action="toggle-subtask"][data-subtask-id="${subtaskId}"]`
-    );
-    if (!row) return;
-    const rowEl = row.closest('.subtask-row');
-    if (!rowEl) return;
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'input';
-    input.value = subtask.title;
-    input.maxLength = 500;
-    input.style.padding = '3px 7px';
-    input.style.fontSize = '12.5px';
-
-    rowEl.textContent = '';
-    rowEl.appendChild(input);
-    input.focus();
-    input.select();
-
-    const finish = async (save) => {
-      const value = input.value.trim();
-      if (save && value && value !== subtask.title) {
-        await invoke(
-          api.updateSubtask(card.dataset.id, subtaskId, { title: value }, parentSubtaskId),
-          'Подзадача обновлена'
-        );
-      } else {
-        renderTaskList();
-      }
-    };
-
-    input.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        finish(true);
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        finish(false);
-      }
-    });
-    input.addEventListener('blur', () => finish(true));
-  }
-
-  function findSubtaskInTask(task, subtaskId) {
-    for (const sub of task.subtasks || []) {
-      if (sub.id === subtaskId) return sub;
-      if (sub.subtasks) {
-        const found = findSubtaskInTask(sub, subtaskId);
-        if (found) return found;
-      }
-    }
-    return null;
-  }
 
   /* --------------------------------- init --------------------------------- */
 
