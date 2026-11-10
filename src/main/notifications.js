@@ -23,9 +23,12 @@ class Notifications {
   show({ title = 'Планировщик', body, taskId = null, action = null, actions = [] }) {
     if (!this.isSupported()) return false;
 
+    const actionIds = actions.map((item) => item && item.action).filter(Boolean);
+    const electronActions = actions.map((item) => ({ type: item.type || 'button', text: item.text }));
+
     let notification;
     try {
-      notification = new Notification({ title, body, silent: false, actions });
+      notification = new Notification({ title, body, silent: false, actions: electronActions });
     } catch (err) {
       console.error('Не удалось создать уведомление:', err);
       return false;
@@ -41,16 +44,21 @@ class Notifications {
       }
     });
 
-    notification.on('action', (event) => {
+    notification.on('action', (event, index) => {
       try {
         if (!taskId) return;
-        if (event.action === 'complete') {
+        const actionId =
+          (event && typeof event.action === 'string' && event.action) ||
+          (Number.isInteger(index) ? actionIds[index] : null) ||
+          (Number.isInteger(event) ? actionIds[event] : null);
+
+        if (actionId === 'complete') {
           this.onTaskAction({ taskId, type: 'complete' });
-        } else if (event.action === 'snooze10') {
+        } else if (actionId === 'snooze10') {
           this.onTaskAction({ taskId, type: 'snooze', until: Date.now() + 10 * 60000 });
-        } else if (event.action === 'snooze60') {
+        } else if (actionId === 'snooze60') {
           this.onTaskAction({ taskId, type: 'snooze', until: Date.now() + 60 * 60000 });
-        } else if (event.action === 'snoozeTomorrow') {
+        } else if (actionId === 'snoozeTomorrow') {
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
           tomorrow.setHours(9, 0, 0, 0);

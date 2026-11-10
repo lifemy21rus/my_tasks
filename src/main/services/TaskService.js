@@ -203,7 +203,13 @@ class TaskService {
     // При первом завершении задачи с правилом повторения создаём следующий экземпляр
     if (task.done && !wasDone && task.recurrence && task.dueAt) {
       const { computeNextDueAt } = this.normalizers;
-      const nextDue = computeNextDueAt(task.dueAt, task.recurrence);
+      let nextDue = computeNextDueAt(task.dueAt, task.recurrence);
+      const now = Date.now();
+      let guard = 0;
+      while (nextDue && Date.parse(nextDue) <= now && guard < 1000) {
+        nextDue = computeNextDueAt(nextDue, task.recurrence);
+        guard += 1;
+      }
       if (nextDue) {
         this.addTask({
           title: task.title,
