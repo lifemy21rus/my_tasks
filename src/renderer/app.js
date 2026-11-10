@@ -258,6 +258,19 @@
 
   /* ------------------------------- render -------------------------------- */
 
+  const view = window.AppView.create({
+    els,
+    state,
+    U,
+    $$,
+    getVisibleTasks,
+    computeCounts,
+    viewInfo,
+    visibleNotes,
+    renderCategories,
+    renderAll
+  });
+
   function renderAll() {
     renderSidebar();
     renderHeader();
@@ -269,94 +282,15 @@
   }
 
   function renderSidebar() {
-    const counts = computeCounts(state, U);
-
-    $$('.nav-item[data-view]').forEach((button) => {
-      const view = button.dataset.view;
-      const badge = button.querySelector('.nav-count');
-      if (badge) {
-        badge.textContent = String(counts[view] || 0);
-        badge.dataset.zero = String(!counts[view]);
-      }
-      button.classList.toggle('is-active', state.view === view);
-    });
-
-    const categorySection = els.categoryList.closest('.sidebar-section');
-    if (categorySection) {
-      categorySection.hidden = state.view === 'notes';
-    }
-
-    const dueSection = els.dueFilterSelect.closest('.sidebar-section');
-    if (dueSection) {
-      dueSection.hidden = state.view === 'notes';
-    }
-
-    renderCategories();
+    return view.renderSidebar();
   }
 
-
   function renderHeader() {
-    const visible = getVisibleTasks(state, U);
-    const info = viewInfo(state);
-    els.viewTitle.textContent = info.title;
-
-    const isNotes = state.view === 'notes';
-    const hasSearch = Boolean(state.search.trim());
-
-    let subtitle = isNotes ? noteCount(visibleNotes().length) : U.taskCount(visible.length);
-    if (hasSearch) {
-      const taskCount = visible.length;
-      const noteCountFound = visibleNotes().length;
-      const total = isNotes ? noteCountFound : taskCount;
-      subtitle = `Найдено: ${total}`;
-    }
-    els.viewSub.textContent = subtitle;
-
-    const doneCount = state.data.tasks.filter((task) => task.done).length;
-    els.clearCompletedBtn.hidden = doneCount === 0 || isNotes;
-
-    // Фильтры и сортировка не нужны во вкладке «Заметки»
-    if (isNotes) {
-      els.filterGroup.closest('.filters-row').hidden = true;
-      els.sortSelect.closest('.sort-wrap').hidden = true;
-      els.notesRow.hidden = false;
-      els.notesViewActive.classList.toggle('is-active', !state.notesArchive);
-      els.notesViewArchived.classList.toggle('is-active', state.notesArchive);
-      els.notesSectionAddBtn.hidden = true;
-    } else {
-      els.filterGroup.closest('.filters-row').hidden = false;
-      els.sortSelect.closest('.sort-wrap').hidden = false;
-      els.notesRow.hidden = true;
-    }
-
-    // Фильтр по приоритету относится только к задачам, у заметок его нет
-    const prioritySection = els.priorityFilter.closest('.sidebar-section');
-    if (prioritySection) {
-      prioritySection.hidden = isNotes;
-    }
-
-    els.searchInput.value = state.search;
-    els.searchInput.placeholder = isNotes ? 'Поиск заметок…' : 'Поиск задач…';
-    els.searchInput.closest('.search-wrap').classList.toggle('has-value', Boolean(state.search));
+    return view.renderHeader();
   }
 
   function syncFilters() {
-    $$('.chip', els.filterGroup).forEach((chip) => {
-      chip.classList.toggle('is-active', chip.dataset.filter === state.filter);
-    });
-    els.sortSelect.value = state.sort;
-    syncPriorityFilters();
-    syncDueFilter();
-  }
-
-  function syncPriorityFilters() {
-    els.priorityFilter.value = state.priorityFilter || '';
-  }
-
-  function syncDueFilter() {
-    if (els.dueFilterSelect) {
-      els.dueFilterSelect.value = state.dueFilter || '';
-    }
+    return view.syncFilters();
   }
 
   function renderTaskList() {
@@ -753,59 +687,13 @@
   }
 
   function renderHotkeyStatus() {
-    const settings = state.data.settings;
-    const enabled = Boolean(settings.hotkeyEnabled);
-    const registered = Boolean(state.runtime.hotkeyRegistered);
-    els.hotkeyStatus.className = `statusbar-dot ${enabled && registered ? 'is-on' : 'is-off'}`;
-    els.hotkeyStatus.title = !enabled
-      ? 'Горячая клавиша отключена'
-      : registered
-        ? `Горячая клавиша: ${U.formatHotkey(settings.hotkey)}`
-        : 'Не удалось зарегистрировать горячую клавишу';
-    els.hotkeyHint.textContent = enabled
-      ? U.formatHotkey(settings.hotkey)
-      : 'Горячая клавиша отключена';
-
-    if (state.view === 'notes') {
-      els.statusLeft.textContent = noteCount(visibleNotes().length);
-      return;
-    }
-
-    const visibleCount = getVisibleTasks(state, U).length;
-    const total = state.data.tasks.length;
-    let text = total === visibleCount ? U.taskCount(total) : `Показано ${visibleCount} из ${total}`;
-    if (state.view === 'notes') {
-      const notesCount = state.data.notes.length;
-      if (notesCount > 0) {
-        text += ` · ${noteCount(notesCount)}`;
-      }
-    }
-    els.statusLeft.textContent = text;
-
-    const counts = computeCounts(state, U);
-    if (counts.doneActualMinutes > 0) {
-      els.statusLeft.textContent += ` · Затрачено: ${counts.doneActualMinutes} мин`;
-    }
+    return view.renderHotkeyStatus();
   }
 
   /* -------------------------------- views -------------------------------- */
 
-  function setView(view, categoryId) {
-    if (view === 'category') {
-      state.view = 'category';
-      state.categoryId = categoryId || null;
-      state.filter = 'active';
-    } else {
-      state.view = view;
-      state.categoryId = null;
-      if (view === 'notes' || view === 'inbox') {
-        state.priorityFilter = '';
-        state.dueFilter = '';
-      }
-      if (view === 'done') state.filter = 'all';
-      else if (state.filter === 'done') state.filter = 'active';
-    }
-    renderAll();
+  function setView(nextView, categoryId) {
+    return view.setView(nextView, categoryId);
   }
 
   /* ------------------------------ task modal ------------------------------ */
