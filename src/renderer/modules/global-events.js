@@ -55,12 +55,18 @@
       }
 
       const modalOpen = !els.modalBackdrop.hidden;
-      if ((event.ctrlKey || event.metaKey) && (event.code === 'KeyN' || event.key.toLowerCase() === 'n')) {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        (event.code === 'KeyN' || event.key.toLowerCase() === 'n')
+      ) {
         event.preventDefault();
         if (!modalOpen) openTaskModal(null);
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && (event.code === 'KeyF' || event.key.toLowerCase() === 'f')) {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        (event.code === 'KeyF' || event.key.toLowerCase() === 'f')
+      ) {
         event.preventDefault();
         if (!modalOpen) els.searchInput.focus();
         return;

@@ -32,7 +32,8 @@
       if (state.filter === 'active') list = list.filter((task) => !task.done);
       else if (state.filter === 'done') list = list.filter((task) => task.done);
     } else {
-      if (state.view !== 'all') list = list.filter((task) => dueMatchesView(task, state.view, now, U));
+      if (state.view !== 'all')
+        list = list.filter((task) => dueMatchesView(task, state.view, now, U));
       if (state.filter === 'active') list = list.filter((task) => !task.done);
       else if (state.filter === 'done') list = list.filter((task) => task.done);
     }

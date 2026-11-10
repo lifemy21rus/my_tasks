@@ -486,4 +486,3 @@ app.whenReady().then(() => {
     app.quit();
   }
 });
-

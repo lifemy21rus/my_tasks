@@ -19,14 +19,7 @@ function getShortcutPath() {
 
 function getStartMenuShortcutPath() {
   const appData = process.env.APPDATA || app.getPath('appData');
-  return path.join(
-    appData,
-    'Microsoft',
-    'Windows',
-    'Start Menu',
-    'Programs',
-    'Планировщик.lnk'
-  );
+  return path.join(appData, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Планировщик.lnk');
 }
 
 function isEnabled() {
@@ -160,6 +153,11 @@ function setStartMenuShortcut(enabled) {
   return true;
 }
 
-module.exports = { getShortcutPath, isEnabled, setEnabled, getStartMenuShortcutPath, isStartMenuShortcutEnabled, setStartMenuShortcut };
-
-
+module.exports = {
+  getShortcutPath,
+  isEnabled,
+  setEnabled,
+  getStartMenuShortcutPath,
+  isStartMenuShortcutEnabled,
+  setStartMenuShortcut
+};

@@ -2,7 +2,16 @@
 
 (function () {
   function createNotesModule(ctx) {
-    const { els, state, visibleNotesFn, makeIconButton, onEditNote, onArchiveNote, onDeleteNote, onToggleNote } = ctx;
+    const {
+      els,
+      state,
+      visibleNotesFn,
+      makeIconButton,
+      onEditNote,
+      onArchiveNote,
+      onDeleteNote,
+      onToggleNote
+    } = ctx;
 
     function renderNoteCard(note) {
       const card = document.createElement('article');
@@ -50,31 +59,17 @@
 
       const isArchived = Boolean(note.archived);
       if (isArchived) {
-        const restore = makeIconButton(
-          'restore-note',
-          'Восстановить из архива',
-          'undo'
-        );
+        const restore = makeIconButton('restore-note', 'Восстановить из архива', 'undo');
         restore.classList.add('small');
         restore.addEventListener('click', () => onArchiveNote(note.id));
 
-        const remove = makeIconButton(
-          'delete-note',
-          'Удалить заметку навсегда',
-          'trash',
-          'danger'
-        );
+        const remove = makeIconButton('delete-note', 'Удалить заметку навсегда', 'trash', 'danger');
         remove.classList.add('small');
         remove.addEventListener('click', () => onDeleteNote(note.id));
 
         actions.append(edit, restore, remove);
       } else {
-        const archive = makeIconButton(
-          'archive-note',
-          'Переместить в архив',
-          'trash',
-          'danger'
-        );
+        const archive = makeIconButton('archive-note', 'Переместить в архив', 'trash', 'danger');
         archive.classList.add('small');
         archive.addEventListener('click', () => onArchiveNote(note.id));
 

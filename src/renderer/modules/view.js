@@ -139,7 +139,8 @@
 
       const visibleCount = getVisibleTasks(state, U).length;
       const total = state.data.tasks.length;
-      let text = total === visibleCount ? U.taskCount(total) : `Показано ${visibleCount} из ${total}`;
+      let text =
+        total === visibleCount ? U.taskCount(total) : `Показано ${visibleCount} из ${total}`;
       if (state.view === 'notes') {
         const notesCount = state.data.notes.length;
         if (notesCount > 0) {

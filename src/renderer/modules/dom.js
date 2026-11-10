@@ -2,8 +2,7 @@
 
 (function () {
   const $ = (id) => document.getElementById(id);
-  const $$ = (selector, root) =>
-    Array.from((root || document).querySelectorAll(selector));
+  const $$ = (selector, root) => Array.from((root || document).querySelectorAll(selector));
 
   function makeIconButton(action, title, icon, extraClass) {
     const icons = {
@@ -28,34 +27,34 @@
   }
 
   function setSvgIcon(container, paths, width, height, strokeWidth = '1.9') {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('width', String(width));
-  svg.setAttribute('height', String(height));
-  svg.setAttribute('fill', 'none');
-  svg.setAttribute('stroke', 'currentColor');
-  svg.setAttribute('stroke-width', strokeWidth);
-  svg.setAttribute('stroke-linecap', 'round');
-  svg.setAttribute('stroke-linejoin', 'round');
-  if (paths) {
-    if (typeof paths === 'string' && paths.trim().startsWith('<')) {
-      svg.innerHTML = paths;
-    } else if (Array.isArray(paths)) {
-      for (const d of paths) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', String(width));
+    svg.setAttribute('height', String(height));
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', strokeWidth);
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    if (paths) {
+      if (typeof paths === 'string' && paths.trim().startsWith('<')) {
+        svg.innerHTML = paths;
+      } else if (Array.isArray(paths)) {
+        for (const d of paths) {
+          const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          pathEl.setAttribute('d', d);
+          svg.appendChild(pathEl);
+        }
+      } else {
         const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        pathEl.setAttribute('d', d);
+        pathEl.setAttribute('d', paths);
         svg.appendChild(pathEl);
       }
-    } else {
-      const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      pathEl.setAttribute('d', paths);
-      svg.appendChild(pathEl);
     }
+    container.appendChild(svg);
   }
-  container.appendChild(svg);
-}
 
-function cacheElements() {
+  function cacheElements() {
     const els = {
       categoryList: $('category-list'),
       viewTitle: $('view-title'),

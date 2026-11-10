@@ -35,9 +35,7 @@ class BackupService {
 
   timestampForFile() {
     const d = new Date();
-    const {
-      getFullYear, getMonth, getDate, getHours, getMinutes, getSeconds
-    } = d;
+    const { getFullYear, getMonth, getDate, getHours, getMinutes, getSeconds } = d;
     const pad2 = this.utils.pad2;
     return `${getFullYear()}-${pad2(getMonth() + 1)}-${pad2(getDate())}_${pad2(getHours())}-${pad2(getMinutes())}-${pad2(getSeconds())}`;
   }
@@ -50,10 +48,7 @@ class BackupService {
       String(kind)
         .replace(/[^a-z0-9-]/gi, '-')
         .slice(0, 30) || 'manual';
-    const target = path.join(
-      this.backupDir,
-      `MyTasks-${safeKind}-${this.timestampForFile()}.json`
-    );
+    const target = path.join(this.backupDir, `MyTasks-${safeKind}-${this.timestampForFile()}.json`);
 
     if (fs.existsSync(this.dataFile)) {
       fs.copyFileSync(this.dataFile, target);

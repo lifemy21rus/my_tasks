@@ -2,9 +2,7 @@
 
 (function () {
   function createHotkeysModule(ctx) {
-    const {
-      state, els, U, updateSetting
-    } = ctx;
+    const { state, els, U, updateSetting } = ctx;
 
     function startHotkeyCapture() {
       state.capturingHotkey = true;
@@ -38,9 +36,12 @@
 
       let main = '';
       if (code === 'Space') main = 'Space';
-      else if (code.startsWith('Key')) main = code.replace('Key', ''); // KeyT → T
-      else if (code.startsWith('Digit')) main = code.replace('Digit', ''); // Digit5 → 5
-      else if (code.startsWith('F') && code.length >= 2 && code.length <= 4) main = code; // F1, F12
+      else if (code.startsWith('Key'))
+        main = code.replace('Key', ''); // KeyT → T
+      else if (code.startsWith('Digit'))
+        main = code.replace('Digit', ''); // Digit5 → 5
+      else if (code.startsWith('F') && code.length >= 2 && code.length <= 4)
+        main = code; // F1, F12
       else return null;
 
       if (!main) return null;

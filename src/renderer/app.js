@@ -84,7 +84,6 @@
     if (res && !els.noteModal.hidden) closeNoteModal();
   }
 
-
   /* ------------------------------- helpers ------------------------------- */
 
   function currentCategory(id) {
@@ -245,7 +244,6 @@
 
   /* ------------------------------ filtering ------------------------------ */
 
-
   /* ------------------------------- render -------------------------------- */
 
   const view = window.AppView.create({
@@ -317,10 +315,12 @@
     try {
       taskModal.openTaskModal(taskId, options);
     } catch (err) {
-      toast('Ошибка открытия модалки задачи: ' + (err && err.message ? err.message : String(err)), 'error');
+      toast(
+        'Ошибка открытия модалки задачи: ' + (err && err.message ? err.message : String(err)),
+        'error'
+      );
     }
   }
-
 
   function renderDraftSubtasks() {
     return subtasks.renderDraftSubtasks();
@@ -454,11 +454,7 @@
       if (!res) return;
 
       const existing = currentTask(draft.id);
-      await syncSubtasks(
-        draft.id,
-        draft.subtasks || [],
-        (existing && existing.subtasks) || []
-      );
+      await syncSubtasks(draft.id, draft.subtasks || [], (existing && existing.subtasks) || []);
 
       const finalState = await api.getState();
       if (finalState && finalState.ok) {
@@ -666,8 +662,6 @@
       toast
     });
   }
-
-
 
   /* --------------------------------- init --------------------------------- */
 

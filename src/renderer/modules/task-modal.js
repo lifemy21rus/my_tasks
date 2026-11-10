@@ -2,8 +2,14 @@
 
 (function () {
   const TASK_COLORS = [
-    '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e',
-    '#06b6d4', '#3b82f6', '#8b5cf6'
+    '#ef4444',
+    '#f97316',
+    '#f59e0b',
+    '#84cc16',
+    '#22c55e',
+    '#06b6d4',
+    '#3b82f6',
+    '#8b5cf6'
   ];
 
   function mapDraftSubtask(sub) {
@@ -36,9 +42,18 @@
 
   function createTaskModalModule(ctx) {
     const {
-      els, state, api, invoke, toast,
-      renderCategoryOptions, renderDraftSubtasks, updateSubtaskCounter,
-      loadReminderEditor, loadRecurrenceEditor, currentTask, U
+      els,
+      state,
+      api,
+      invoke,
+      toast,
+      renderCategoryOptions,
+      renderDraftSubtasks,
+      updateSubtaskCounter,
+      loadReminderEditor,
+      loadRecurrenceEditor,
+      currentTask,
+      U
     } = ctx;
 
     function openTaskModal(taskId, options = {}) {
@@ -192,7 +207,9 @@
 
         const original = (draft.subtasks || []).filter((sub) => sub.id);
         const originalIds = new Set(original.map((sub) => sub.id));
-        const draftIds = new Set((draft.subtasks || []).filter((sub) => sub.id).map((sub) => sub.id));
+        const draftIds = new Set(
+          (draft.subtasks || []).filter((sub) => sub.id).map((sub) => sub.id)
+        );
 
         for (const id of originalIds) {
           if (!draftIds.has(id)) await api.deleteSubtask(draft.id, id);

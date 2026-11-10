@@ -4,15 +4,18 @@ const DEFAULT_OFFSET = 60;
 
 function resolveReminders(task, settings) {
   if (Array.isArray(task.reminders) && task.reminders.length > 0) {
-    return task.reminders.map((r) => ({
-      offset: Number.isFinite(Number(r.offset)) && r.offset >= 0 ? Math.floor(r.offset) : null,
-      type: r.type === 'due' ? 'due' : 'before'
-    })).filter((r) => r.offset !== null || r.type === 'due');
+    return task.reminders
+      .map((r) => ({
+        offset: Number.isFinite(Number(r.offset)) && r.offset >= 0 ? Math.floor(r.offset) : null,
+        type: r.type === 'due' ? 'due' : 'before'
+      }))
+      .filter((r) => r.offset !== null || r.type === 'due');
   }
 
-  const defaultOffset = settings && Number.isFinite(Number(settings.defaultRemindBefore))
-    ? Number(settings.defaultRemindBefore)
-    : DEFAULT_OFFSET;
+  const defaultOffset =
+    settings && Number.isFinite(Number(settings.defaultRemindBefore))
+      ? Number(settings.defaultRemindBefore)
+      : DEFAULT_OFFSET;
 
   const reminders = [];
   if (task.remindAtDue !== false) {
@@ -61,7 +64,9 @@ function getReminderPlans(task, settings, nowValue) {
   const reminders = resolveReminders(task, settings);
   if (reminders.length === 0) return null;
 
-  const plans = reminders.map((r) => buildPlan(task, due, r, snoozedUntil, nowValue)).filter(Boolean);
+  const plans = reminders
+    .map((r) => buildPlan(task, due, r, snoozedUntil, nowValue))
+    .filter(Boolean);
   return plans.length > 0 ? plans : null;
 }
 

@@ -105,11 +105,15 @@
     }
 
     function renderCategoryColorGrid() {
-      renderColorGrid(els.categoryColorGrid, state.categoryDraft && state.categoryDraft.color, (color) => {
-        if (!state.categoryDraft) return;
-        state.categoryDraft.color = color;
-        renderCategoryColorGrid();
-      });
+      renderColorGrid(
+        els.categoryColorGrid,
+        state.categoryDraft && state.categoryDraft.color,
+        (color) => {
+          if (!state.categoryDraft) return;
+          state.categoryDraft.color = color;
+          renderCategoryColorGrid();
+        }
+      );
     }
 
     function openCategoryModal(categoryId) {
@@ -159,7 +163,10 @@
         );
         if (res) closeCategoryModal();
       } else {
-        const res = await invoke(api.addCategory({ name, color: draft.color }), 'Категория создана');
+        const res = await invoke(
+          api.addCategory({ name, color: draft.color }),
+          'Категория создана'
+        );
         if (res) closeCategoryModal();
       }
     }

@@ -326,7 +326,9 @@
       els.emptyAddBtn.textContent = 'Добавить задачу';
 
       const tasksOnlyEmpty =
-        state.view === 'all' ? tasks.length === 0 : tasks.length === 0 && visibleNotes().length === 0;
+        state.view === 'all'
+          ? tasks.length === 0
+          : tasks.length === 0 && visibleNotes().length === 0;
       if (tasksOnlyEmpty) {
         els.emptyState.hidden = false;
         els.emptyAddBtn.hidden = Boolean(state.search.trim());
@@ -341,9 +343,7 @@
 
       // set indeterminate states (cannot be done via HTML)
       for (const task of tasks) {
-        const checkbox = els.taskList.querySelector(
-          `.task-card[data-id="${task.id}"] .task-check`
-        );
+        const checkbox = els.taskList.querySelector(`.task-card[data-id="${task.id}"] .task-check`);
         if (!checkbox) continue;
         const subs = task.subtasks || [];
         const doneSubs = subs.filter((sub) => sub.done).length;

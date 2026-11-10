@@ -100,7 +100,9 @@
       });
 
       els.dataDirLabel.textContent = state.runtime.dataDir || '%APPDATA%\\Мои задачи';
-      els.versionLabel.textContent = state.runtime.version ? `Версия ${state.runtime.version}.` : '';
+      els.versionLabel.textContent = state.runtime.version
+        ? `Версия ${state.runtime.version}.`
+        : '';
       els.checkUpdatesBtn.hidden = false;
       els.installUpdateBtn.hidden = true;
       els.updateStatusNote.hidden = true;

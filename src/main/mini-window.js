@@ -173,4 +173,3 @@ class MiniPanel {
 }
 
 module.exports = { MiniPanel, MINI_WIDTH, backgroundColorFor };
-

@@ -24,7 +24,10 @@ class Notifications {
     if (!this.isSupported()) return false;
 
     const actionIds = actions.map((item) => item && item.action).filter(Boolean);
-    const electronActions = actions.map((item) => ({ type: item.type || 'button', text: item.text }));
+    const electronActions = actions.map((item) => ({
+      type: item.type || 'button',
+      text: item.text
+    }));
 
     let notification;
     try {
@@ -84,9 +87,10 @@ class Notifications {
 
   showBefore(task, offsetMinutes) {
     const due = utils.formatDueChip(task.dueAt);
-    const when = Number.isFinite(offsetMinutes) && offsetMinutes >= 0
-      ? `через ${utils.formatDuration(offsetMinutes)}`
-      : 'скоро';
+    const when =
+      Number.isFinite(offsetMinutes) && offsetMinutes >= 0
+        ? `через ${utils.formatDuration(offsetMinutes)}`
+        : 'скоро';
     return this.show({
       body: `«${shortTitle(task.title)}» — срок ${when}. ${due.text}.`,
       taskId: task.id,
@@ -126,9 +130,10 @@ class Notifications {
   }
 
   showMissed(count) {
-    const body = count === 1
-      ? 'Пропущен срок одной задачи. Откройте приложение, чтобы посмотреть.'
-      : `Пропущено сроков: ${count}. Откройте приложение, чтобы посмотреть.`;
+    const body =
+      count === 1
+        ? 'Пропущен срок одной задачи. Откройте приложение, чтобы посмотреть.'
+        : `Пропущено сроков: ${count}. Откройте приложение, чтобы посмотреть.`;
     return this.show({ body, action: 'overdue' });
   }
 
@@ -152,6 +157,3 @@ class Notifications {
 }
 
 module.exports = { Notifications };
-
-
-

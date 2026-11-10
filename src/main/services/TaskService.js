@@ -178,11 +178,7 @@ class TaskService {
   }
 
   toggleTask(id, done) {
-    const {
-      ensureTaskInvariant,
-      nowIso,
-      clone
-    } = this.normalizers;
+    const { ensureTaskInvariant, nowIso, clone } = this.normalizers;
 
     const task = this.data.tasks.find((item) => item.id === id);
     if (!task) throw new Error('Задача не найдена');

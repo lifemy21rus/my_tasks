@@ -162,7 +162,9 @@ class Store extends EventEmitter {
       } catch (_) {
         // ignore cleanup error
       }
-      throw new Error(`Не удалось сохранить данные: ${err && err.message ? err.message : String(err)}`);
+      throw new Error(
+        `Не удалось сохранить данные: ${err && err.message ? err.message : String(err)}`
+      );
     }
     if (!silent) this.emit('change', { silent: false });
   }
