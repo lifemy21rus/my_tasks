@@ -193,9 +193,9 @@ class TaskService {
     task.updatedAt = nowIso();
     if (task.done) {
       task.snoozedUntil = null;
-      for (const subtask of task.subtasks) subtask.done = true;
+      this.setSubtasksDone(task.subtasks, true);
     } else {
-      for (const subtask of task.subtasks) subtask.done = false;
+      this.setSubtasksDone(task.subtasks, false);
     }
     ensureTaskInvariant(task);
     this.save();
@@ -279,6 +279,16 @@ class TaskService {
     return 0;
   }
 
+  setSubtasksDone(subtasks, done) {
+    if (!Array.isArray(subtasks)) return;
+    for (const subtask of subtasks) {
+      subtask.done = Boolean(done);
+      if (Array.isArray(subtask.subtasks) && subtask.subtasks.length > 0) {
+        this.setSubtasksDone(subtask.subtasks, done);
+      }
+    }
+  }
+
   updateSubtask(taskId, subtaskId, patch = {}, parentSubtaskId = null) {
     const { normalizeTitle, nowIso, clone } = this.normalizers;
 
@@ -305,7 +315,11 @@ class TaskService {
     const subtask = this.findSubtask(task.subtasks, subtaskId);
     if (!subtask) throw new Error('Подзадача не найдена');
 
-    subtask.done = Boolean(done);
+    const nextDone = Boolean(done);
+    subtask.done = nextDone;
+    if (Array.isArray(subtask.subtasks) && subtask.subtasks.length > 0) {
+      this.setSubtasksDone(subtask.subtasks, nextDone);
+    }
     task.updatedAt = nowIso();
     ensureTaskInvariant(task);
 
