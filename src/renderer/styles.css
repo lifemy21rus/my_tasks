@@ -670,6 +670,7 @@ button {
 }
 
 .note-card {
+  position: relative;
   background: var(--panel);
   border: 1px solid var(--border);
   border-left: 4px solid var(--note-color, var(--primary));
@@ -699,7 +700,7 @@ button {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 13px 12px 13px 14px;
+  padding: 13px 14px 13px 14px;
 }
 
 .note-check {
@@ -753,17 +754,24 @@ button {
 }
 
 .note-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
   display: flex;
   align-items: center;
   gap: 1px;
-  flex: none;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 120ms ease;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 2px;
 }
 
 .note-card:hover .note-actions,
 .note-card:focus-within .note-actions {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .task-card {
