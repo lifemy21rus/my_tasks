@@ -317,14 +317,6 @@
     return taskList.renderTaskList();
   }
 
-  function openInlineSubtaskForm(card, row, parentSubtaskId) {
-    return taskList.openInlineSubtaskForm(card, row, parentSubtaskId);
-  }
-
-  function startInlineSubtaskEdit(card, subtaskId, parentSubtaskId = null) {
-    return taskList.startInlineSubtaskEdit(card, subtaskId, parentSubtaskId);
-  }
-
   function renderHotkeyStatus() {
     return view.renderHotkeyStatus();
   }
@@ -706,92 +698,16 @@
     });
 
     // task list delegation
-    els.taskList.addEventListener('change', (event) => {
-      const target = event.target;
-      if (target.dataset.action === 'select-task') {
-        toggleSelection(target.dataset.taskId);
-        return;
-      }
-      if (target.dataset.action === 'toggle-task') {
-        const card = target.closest('.task-card');
-        if (card) toggleTask(card.dataset.id, target.checked);
-      } else if (target.dataset.action === 'toggle-subtask') {
-        const card = target.closest('.task-card');
-        if (card)
-          toggleSubtask(
-            card.dataset.id,
-            target.dataset.subtaskId,
-            target.checked,
-            target.dataset.parentSubtaskId || null
-          );
-      }
-    });
-
-    els.taskList.addEventListener('click', (event) => {
-      const card = event.target.closest('.task-card');
-      if (!card) return;
-
-      // кнопки с data-action обрабатываются отдельно
-      const button = event.target.closest('[data-action]');
-      if (button && button.tagName !== 'INPUT') {
-        const taskId = card.dataset.id;
-        const action = button.dataset.action;
-        if (action === 'edit') openTaskModal(taskId);
-        else if (action === 'delete') deleteTaskWithConfirm(taskId);
-        else if (action === 'snooze') openSnoozeMenu(button, taskId);
-        else if (action === 'toggle-expand') {
-          if (state.expanded.has(taskId)) state.expanded.delete(taskId);
-          else state.expanded.add(taskId);
-          renderTaskList();
-        } else if (action === 'toggle-sub-subtasks') {
-          const subtaskId = button.dataset.subtaskId;
-          if (state.expandedNestedSubtasks.has(subtaskId)) state.expandedNestedSubtasks.delete(subtaskId);
-          else state.expandedNestedSubtasks.add(subtaskId);
-          renderTaskList();
-        } else if (action === 'edit-subtask') {
-          startInlineSubtaskEdit(
-            card,
-            button.dataset.subtaskId,
-            button.dataset.parentSubtaskId || null
-          );
-        } else if (action === 'delete-subtask') {
-          deleteSubtask(taskId, button.dataset.subtaskId, button.dataset.parentSubtaskId || null);
-        } else if (action === 'add-sub-subtask') {
-          openInlineSubtaskForm(card, button.closest('.subtask-row'), button.dataset.subtaskId);
-        }
-        return;
-      }
-
-      // клик по чекбоксу задачи — обработает событие change
-      if (event.target.closest('.task-check')) return;
-
-      // клик по подзадаче (чекбокс или строка) — не трогаем главную задачу
-      if (event.target.closest('[data-action="toggle-subtask"]')) return;
-      if (event.target.closest('.subtask-row')) return;
-
-      // клик по телу карточки/заголовку — переключаем выполнение задачи
-      const checkbox = card.querySelector('.task-check');
-      if (checkbox) {
-        //# Задача больше не переключается при клике по телу карточки/заголовку.
-        //# Отмечать выполнение можно только галочкой (через событие change).
-        return;
-      }
-    });
-
-    els.taskList.addEventListener('submit', (event) => {
-      const form = event.target.closest('[data-form="add-subtask"]');
-      if (!form) return;
-      event.preventDefault();
-      const card = form.closest('.task-card');
-      const input = form.querySelector('input');
-      const value = input.value.trim();
-      if (!card || !value) return;
-      const parentSubtaskId = form.dataset.parentSubtaskId || null;
-      if (parentSubtaskId) state.expandedNestedSubtasks.add(parentSubtaskId);
-      invoke(
-        api.addSubtask(card.dataset.id, value, parentSubtaskId),
-        'Подзадача добавлена'
-      );
+    taskList.bindTaskListEvents({
+      toggleSelection: typeof toggleSelection === 'function' ? toggleSelection : null,
+      toggleTask,
+      toggleSubtask,
+      openTaskModal,
+      deleteTaskWithConfirm,
+      openSnoozeMenu,
+      deleteSubtask,
+      invoke,
+      api
     });
 
     // task modal
