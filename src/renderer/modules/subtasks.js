@@ -101,6 +101,10 @@
       renderDraftSubtasks();
       updateSubtaskCounter();
       els.subtaskInput.focus();
+      const addRow = els.subtaskInput.closest('.subtask-add-row') || els.subtaskInput;
+      if (addRow && addRow.scrollIntoView) {
+        addRow.scrollIntoView({ block: 'nearest' });
+      }
     }
 
     return {
