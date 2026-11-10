@@ -1805,6 +1805,7 @@ button {
 .color-swatch {
   width: 30px;
   height: 30px;
+  flex: 0 0 30px;
   border-radius: 50%;
   border: 2px solid transparent;
   padding: 0;
@@ -1813,7 +1814,7 @@ button {
 }
 
 .color-swatch:hover {
-  transform: scale(1.1);
+  filter: brightness(1.08);
 }
 
 .color-swatch.is-active {
