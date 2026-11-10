@@ -36,10 +36,9 @@
 
   function createTaskModalModule(ctx) {
     const {
-      els, state, api, invoke, toast, renderAll,
+      els, state, api, invoke, toast,
       renderCategoryOptions, renderDraftSubtasks, updateSubtaskCounter,
-      loadReminderEditor, loadRecurrenceEditor, currentTask,
-      buildRecurrenceFromEditor, U
+      loadReminderEditor, loadRecurrenceEditor, currentTask, U
     } = ctx;
 
     function openTaskModal(taskId, options = {}) {

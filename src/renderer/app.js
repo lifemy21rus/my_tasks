@@ -36,10 +36,6 @@
   state.editingNoteId = null;
   state.noteColor = NOTE_COLORS[0];
 
-  function noteCount(n) {
-    return U.noteCount(n);
-  }
-
   function visibleNotes() {
     const query = state.search.trim().toLowerCase();
     return state.data.notes
@@ -90,14 +86,6 @@
 
 
   /* ------------------------------- helpers ------------------------------- */
-
-  function todayStart() {
-    return U.startOfDay(new Date());
-  }
-
-  function formatDateTimeFull(value) {
-    return U.formatDateTimeFull(value);
-  }
 
   function currentCategory(id) {
     return state.data.categories.find((c) => c.id === id) || null;
@@ -253,10 +241,6 @@
 
   function renderCategoryOptions() {
     return categories.renderCategoryOptions();
-  }
-
-  function renderCategoryColorGrid() {
-    return categories.renderCategoryColorGrid();
   }
 
   /* ------------------------------ filtering ------------------------------ */
@@ -533,10 +517,6 @@
 
   function startHotkeyCapture() {
     hotkeys.startHotkeyCapture();
-  }
-
-  function stopHotkeyCapture() {
-    hotkeys.stopHotkeyCapture();
   }
 
   async function handleHotkeyKeydown(event) {
