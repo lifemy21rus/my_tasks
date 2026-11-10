@@ -454,3 +454,110 @@ test('normalizeSettings applies defaults for new mini panel fields', () => {
   assert.equal(withValues.miniPanelAtStart, true);
   assert.equal(withValues.miniPanelTabs, 'tasks');
 });
+
+test('migrates v1 data file to v2 schema on load', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mytasks-'));
+  const v1 = {
+    version: 1,
+    settings: { theme: 'dark', hotkey: 'CommandOrControl+Shift+Space' },
+    categories: [{ id: 'c1', name: 'Работа', color: '#2563eb' }],
+    tasks: [
+      {
+        id: 't1',
+        title: 'Старая задача',
+        done: false,
+        subtasks: [],
+        createdAt: '2024-01-01T10:00:00.000Z',
+        updatedAt: '2024-01-01T10:00:00.000Z'
+      }
+    ],
+    notes: [
+      {
+        id: 'n1',
+        title: 'Заметка',
+        content: 'текст',
+        done: false,
+        archived: false,
+        createdAt: '2024-01-01T10:00:00.000Z',
+        updatedAt: '2024-01-01T10:00:00.000Z'
+      }
+    ],
+    templates: [],
+    taskTemplates: []
+  };
+  fs.writeFileSync(path.join(dir, 'data.json'), JSON.stringify(v1, null, 2), 'utf8');
+
+  const store = new Store(dir, { isPackaged: false });
+  const data = store.getData();
+
+  assert.equal(data.version, 2);
+  assert.ok(data.meta && data.meta.migratedFrom === 1);
+  assert.ok(Array.isArray(data.tags));
+  assert.ok(Array.isArray(data.smartLists));
+  assert.ok(Array.isArray(data.attachments));
+  assert.ok(Array.isArray(data.activity));
+
+  const task = data.tasks.find((t) => t.id === 't1');
+  assert.ok(task);
+  assert.equal(task.status, 'todo');
+  assert.ok(Array.isArray(task.tags));
+  assert.ok(Array.isArray(task.attachments));
+  assert.ok(Number.isFinite(task.order));
+
+  const note = data.notes.find((n) => n.id === 'n1');
+  assert.ok(note);
+  assert.ok(Array.isArray(note.tags));
+  assert.ok(Array.isArray(note.attachments));
+  assert.ok(Array.isArray(note.linkedTaskIds));
+
+  const backups = fs.readdirSync(path.join(dir, 'backups'));
+  assert.ok(
+    backups.some((n) => n.includes('pre-v2-migration')),
+    'pre-v2-migration backup expected'
+  );
+});
+
+test('smart lists: add, update, delete and restore', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mytasks-smart-'));
+  const store = new Store(dir, { isPackaged: false });
+
+  const created = store.addSmartList({
+    name: 'Рабочие',
+    criteria: { view: 'all', statusFilter: 'todo', tagFilter: 'работа' }
+  });
+  assert.ok(created && created.id);
+  assert.equal(created.name, 'Рабочие');
+  assert.equal(store.getSmartLists().length, 1);
+
+  const updated = store.updateSmartList(created.id, { name: 'Рабочие задачи' });
+  assert.equal(updated.name, 'Рабочие задачи');
+
+  store.deleteSmartList(created.id);
+  assert.equal(store.getSmartLists().length, 0);
+
+  const restored = store.restoreSmartList(created);
+  assert.equal(restored.id, created.id);
+  assert.equal(restored.name, 'Рабочие');
+  assert.equal(store.getSmartLists().length, 1);
+  assert.throws(() => store.restoreSmartList(created), /уже существует/);
+});
+
+test('categories: restore recreates deleted category', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mytasks-cat-restore-'));
+  const store = new Store(dir, { isPackaged: false });
+  const cat = store.addCategory({ name: 'Проекты', color: '#2563eb' });
+  const task = store.addTask({ title: 'T', categoryId: cat.id });
+  assert.equal(task.categoryId, cat.id);
+
+  store.deleteCategory(cat.id);
+  assert.equal(store.getCategories().length, 0);
+  assert.equal(store.getTasks().find((t) => t.id === task.id).categoryId, null);
+
+  const restored = store.restoreCategory(cat);
+  assert.equal(restored.id, cat.id);
+  assert.equal(restored.name, 'Проекты');
+  assert.equal(store.getCategories().length, 1);
+  // links are not auto-restored by store-level restore
+  assert.equal(store.getTasks().find((t) => t.id === task.id).categoryId, null);
+  assert.throws(() => store.restoreCategory(cat), /уже существует/);
+});

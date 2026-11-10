@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const utils = require('../shared/utils');
 
 const MAX_BACKUPS = 5;
+const SCHEMA_VERSION = 2;
 const DEFAULT_HOTKEY = 'CommandOrControl+Shift+Space';
 const ENCRYPTION_PREFIX = 'MYTASKS_ENCv1:';
 
@@ -214,20 +215,59 @@ function normalizeSettings(raw, isPackaged) {
     quitOnClose: typeof source.quitOnClose === 'boolean' ? source.quitOnClose : false,
     startMenuShortcut:
       typeof source.startMenuShortcut === 'boolean' ? source.startMenuShortcut : false,
-    dataEncryption: typeof source.dataEncryption === 'boolean' ? source.dataEncryption : false
+    dataEncryption: typeof source.dataEncryption === 'boolean' ? source.dataEncryption : false,
+    defaultView: ['list', 'kanban', 'calendar', 'stats'].includes(source.defaultView)
+      ? source.defaultView
+      : 'list',
+    calendarView: ['month', 'week', 'day'].includes(source.calendarView)
+      ? source.calendarView
+      : 'month'
   };
 }
 
 function defaultData(isPackaged) {
   return {
-    version: 1,
+    version: SCHEMA_VERSION,
+    meta: { migratedFrom: null, migratedAt: null, appVersion: null },
     settings: normalizeSettings({}, isPackaged),
     categories: [],
+    tags: [],
     tasks: [],
     notes: [],
     templates: [],
-    taskTemplates: []
+    taskTemplates: [],
+    smartLists: [],
+    attachments: [],
+    activity: []
   };
+}
+
+function normalizeStringArray(raw, limit = 100) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const item of raw) {
+    const val = String(item === null || item === undefined ? '' : item)
+      .trim()
+      .slice(0, 100);
+    if (!val || seen.has(val)) continue;
+    seen.add(val);
+    out.push(val);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+function normalizeOrder(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function normalizeStatus(value, done) {
+  const allowed = ['inbox', 'todo', 'in_progress', 'done'];
+  if (done) return 'done';
+  if (allowed.includes(value) && value !== 'done') return value;
+  return 'todo';
 }
 
 function normalizeSubtask(raw, depth = 1) {
@@ -259,6 +299,9 @@ function normalizeNote(raw) {
     done: Boolean(raw.done),
     archived: Boolean(raw.archived),
     categoryId: raw.categoryId || null,
+    tags: normalizeStringArray(raw.tags),
+    attachments: normalizeStringArray(raw.attachments),
+    linkedTaskIds: normalizeStringArray(raw.linkedTaskIds),
     createdAt,
     updatedAt: normalizeDate(raw.updatedAt) || createdAt
   };
@@ -306,7 +349,7 @@ function normalizeCategory(raw) {
   };
 }
 
-function normalizeTask(raw, validCategoryIds) {
+function normalizeTask(raw, validCategoryIds, orderFallback = 0) {
   if (!raw || typeof raw !== 'object') return null;
   const title = normalizeTitle(raw.title);
   if (!title) return null;
@@ -326,6 +369,8 @@ function normalizeTask(raw, validCategoryIds) {
     priority: normalizePriority(raw.priority),
     color: normalizeColor(raw.color),
     categoryId: validCategoryIds && validCategoryIds.has(raw.categoryId) ? raw.categoryId : null,
+    status: normalizeStatus(raw.status, done),
+    order: normalizeOrder(raw.order, orderFallback),
     done,
     completedAt: done ? normalizeDate(raw.completedAt) || nowIso() : null,
     createdAt,
@@ -341,6 +386,8 @@ function normalizeTask(raw, validCategoryIds) {
     snoozedUntil: normalizeDate(raw.snoozedUntil),
     estimatedMinutes: normalizeMinutes(raw.estimatedMinutes),
     actualMinutes: normalizeMinutes(raw.actualMinutes),
+    tags: normalizeStringArray(raw.tags),
+    attachments: normalizeStringArray(raw.attachments),
     subtasks
   };
 
@@ -368,22 +415,34 @@ function ensureTaskInvariant(task) {
   if (!task.subtasks || task.subtasks.length === 0) {
     if (!task.done) task.completedAt = null;
     else if (!task.completedAt) task.completedAt = nowIso();
-    return;
+  } else {
+    const allDone = task.subtasks.every((subtask) => subtask.done);
+    if (allDone) {
+      task.done = true;
+      task.completedAt = task.completedAt || nowIso();
+      task.snoozedUntil = null;
+    } else {
+      task.done = false;
+      task.completedAt = null;
+    }
   }
 
-  const allDone = task.subtasks.every((subtask) => subtask.done);
-  if (allDone) {
-    task.done = true;
-    task.completedAt = task.completedAt || nowIso();
-    task.snoozedUntil = null;
-  } else {
-    task.done = false;
-    task.completedAt = null;
+  // v2: status согласован с done (сохраняем in_progress/todo для незавершённых, если валидно)
+  if (task.done) {
+    task.status = 'done';
+  } else if (!['inbox', 'todo', 'in_progress'].includes(task.status)) {
+    task.status = 'todo';
   }
 }
 
+function normalizeSimpleEntity(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 100) : uid();
+  return { ...raw, id };
+}
+
 function normalizeData(raw, isPackaged) {
-  if (!raw || typeof raw !== 'object') return defaultData(isPackaged);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return defaultData(isPackaged);
 
   const settings = normalizeSettings(raw.settings, isPackaged);
   const categories = [];
@@ -405,15 +464,15 @@ function normalizeData(raw, isPackaged) {
   const tasks = [];
   const seenTaskIds = new Set();
   if (Array.isArray(raw.tasks)) {
-    for (const item of raw.tasks) {
-      const task = normalizeTask(item, seenCategoryIds);
-      if (!task) continue;
+    raw.tasks.forEach((item, index) => {
+      const task = normalizeTask(item, seenCategoryIds, index);
+      if (!task) return;
       let id = task.id;
       if (seenTaskIds.has(id)) id = uid();
       task.id = id;
       seenTaskIds.add(id);
       tasks.push(task);
-    }
+    });
   }
 
   const notes = [];
@@ -435,34 +494,124 @@ function normalizeData(raw, isPackaged) {
     ? raw.taskTemplates.map(normalizeTaskTemplate).filter(Boolean)
     : [];
 
+  const tags = Array.isArray(raw.tags)
+    ? raw.tags
+        .map((t) => {
+          if (!t || typeof t !== 'object') return null;
+          const name = normalizeCategoryName(t.name);
+          if (!name) return null;
+          return {
+            id: typeof t.id === 'string' && t.id ? t.id.slice(0, 100) : uid(),
+            name,
+            color: t.color ? normalizeColor(t.color) : null
+          };
+        })
+        .filter(Boolean)
+    : [];
+
+  const smartLists = Array.isArray(raw.smartLists)
+    ? raw.smartLists.map(normalizeSimpleEntity).filter(Boolean)
+    : [];
+  const attachments = Array.isArray(raw.attachments)
+    ? raw.attachments.map(normalizeSimpleEntity).filter(Boolean)
+    : [];
+  const activity = Array.isArray(raw.activity)
+    ? raw.activity.filter((e) => e && typeof e === 'object')
+    : [];
+
+  const metaSrc = raw.meta && typeof raw.meta === 'object' ? raw.meta : {};
+  const meta = {
+    migratedFrom: metaSrc.migratedFrom ?? null,
+    migratedAt: metaSrc.migratedAt ?? null,
+    appVersion: metaSrc.appVersion ?? null
+  };
+
   return {
-    version: 1,
+    version: SCHEMA_VERSION,
+    meta,
     settings,
     categories,
+    tags,
     tasks,
     notes,
     templates,
-    taskTemplates
+    taskTemplates,
+    smartLists,
+    attachments,
+    activity
   };
 }
 
 // Миграция данных между версиями структуры data.json.
-// Вызывается перед нормализацией, чтобы старые файлы вели себя предсказуемо.
-// Версия 2 пока не выпущена — заготовка готовит поле к будущим преобразованиям.
-function migrateData(raw) {
+// Вызывается перед нормализацией. Идемпотентна.
+function migrateData(raw, options = {}) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
-  const version = Number(raw.version) || 0;
-  if (version >= 2) return raw;
 
-  const next = { ...raw, version: 2 };
+  let next = { ...raw };
+  let version = Number(next.version);
+  if (!Number.isFinite(version) || version < 1) version = 1;
 
-  // Пример будущих преобразований (раскомментировать при выходе v2):
-  // if (Array.isArray(next.notes)) {
-  //   next.notes = next.notes.map((note) => ({
-  //     ...note,
-  //     archived: Boolean(note.archived)
-  //   }));
-  // }
+  if (version < 2) {
+    next.version = 2;
+    next.meta = {
+      migratedFrom: version,
+      migratedAt: new Date().toISOString(),
+      appVersion: options.appVersion || null
+    };
+
+    if (!Array.isArray(next.tags)) next.tags = [];
+    if (!Array.isArray(next.smartLists)) next.smartLists = [];
+    if (!Array.isArray(next.attachments)) next.attachments = [];
+    if (!Array.isArray(next.activity)) next.activity = [];
+
+    if (Array.isArray(next.tasks)) {
+      next.tasks = next.tasks.map((task, index) => {
+        if (!task || typeof task !== 'object') return task;
+        const done = Boolean(task.done);
+        let status = task.status;
+        if (done) status = 'done';
+        else if (!['inbox', 'todo', 'in_progress'].includes(status)) status = 'todo';
+        return {
+          ...task,
+          status,
+          order: Number.isFinite(Number(task.order)) ? Number(task.order) : index,
+          tags: Array.isArray(task.tags) ? task.tags : [],
+          attachments: Array.isArray(task.attachments) ? task.attachments : []
+        };
+      });
+    }
+
+    if (Array.isArray(next.notes)) {
+      next.notes = next.notes.map((note) => {
+        if (!note || typeof note !== 'object') return note;
+        return {
+          ...note,
+          tags: Array.isArray(note.tags) ? note.tags : [],
+          attachments: Array.isArray(note.attachments) ? note.attachments : [],
+          linkedTaskIds: Array.isArray(note.linkedTaskIds) ? note.linkedTaskIds : []
+        };
+      });
+    }
+
+    if (next.settings && typeof next.settings === 'object') {
+      next.settings = {
+        ...next.settings,
+        defaultView: next.settings.defaultView || 'list',
+        calendarView: next.settings.calendarView || 'month'
+      };
+    }
+
+    version = 2;
+  }
+
+  // Гарантируем наличие обязательных коллекций для idempotent-повторов/частичных данных
+  if (!Array.isArray(next.tags)) next.tags = [];
+  if (!Array.isArray(next.smartLists)) next.smartLists = [];
+  if (!Array.isArray(next.attachments)) next.attachments = [];
+  if (!Array.isArray(next.activity)) next.activity = [];
+  if (!next.meta || typeof next.meta !== 'object') {
+    next.meta = { migratedFrom: null, migratedAt: null, appVersion: null };
+  }
 
   return next;
 }
@@ -474,6 +623,7 @@ function timestampForFile() {
 
 module.exports = {
   MAX_BACKUPS,
+  SCHEMA_VERSION,
   DEFAULT_HOTKEY,
   ENCRYPTION_PREFIX,
   encryptionKey,

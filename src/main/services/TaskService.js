@@ -52,6 +52,8 @@ class TaskService {
       priority: normalizePriority(input.priority),
       color: normalizeColor(input.color),
       categoryId,
+      status: input.status === 'in_progress' || input.status === 'inbox' ? input.status : 'todo',
+      order: Number.isFinite(Number(input.order)) ? Number(input.order) : this.data.tasks.length,
       done: false,
       completedAt: null,
       createdAt,
@@ -73,6 +75,10 @@ class TaskService {
       recurrence: normalizeRecurrence(input.recurrence),
       estimatedMinutes: normalizeMinutes(input.estimatedMinutes),
       actualMinutes: normalizeMinutes(input.actualMinutes),
+      tags: Array.isArray(input.tags) ? input.tags.filter((t) => typeof t === 'string' && t) : [],
+      attachments: Array.isArray(input.attachments)
+        ? input.attachments.filter((t) => typeof t === 'string' && t)
+        : [],
       notifiedBeforeAt: null,
       notifiedDueAt: null,
       snoozedUntil: null,
@@ -83,6 +89,11 @@ class TaskService {
 
     ensureTaskInvariant(task);
     this.data.tasks.push(task);
+    if (this.ctx && this.ctx.activity) {
+      try {
+        this.ctx.activity.log('task.add', { id: task.id, title: task.title });
+      } catch (_) {}
+    }
     this.save();
     return clone(task);
   }
@@ -151,6 +162,25 @@ class TaskService {
     if (Object.prototype.hasOwnProperty.call(patch, 'actualMinutes')) {
       task.actualMinutes = normalizeMinutes(patch.actualMinutes);
     }
+    if (Object.prototype.hasOwnProperty.call(patch, 'status')) {
+      const allowed = ['inbox', 'todo', 'in_progress', 'done'];
+      if (allowed.includes(patch.status)) task.status = patch.status;
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(patch, 'order') &&
+      Number.isFinite(Number(patch.order))
+    ) {
+      task.order = Number(patch.order);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'tags') && Array.isArray(patch.tags)) {
+      task.tags = patch.tags.filter((t) => typeof t === 'string' && t).slice(0, 100);
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(patch, 'attachments') &&
+      Array.isArray(patch.attachments)
+    ) {
+      task.attachments = patch.attachments.filter((t) => typeof t === 'string' && t).slice(0, 200);
+    }
 
     const newReminders = task.reminders ? JSON.stringify(task.reminders) : null;
     const remindersChanged =
@@ -166,6 +196,11 @@ class TaskService {
 
     task.updatedAt = nowIso();
     ensureTaskInvariant(task);
+    if (this.ctx && this.ctx.activity) {
+      try {
+        this.ctx.activity.log('task.update', { id: task.id, fields: Object.keys(patch || {}) });
+      } catch (_) {}
+    }
     this.save();
     return clone(task);
   }
@@ -173,8 +208,33 @@ class TaskService {
   deleteTask(id) {
     const index = this.data.tasks.findIndex((item) => item.id === id);
     if (index === -1) throw new Error('Задача не найдена');
-    this.data.tasks.splice(index, 1);
+    const [removed] = this.data.tasks.splice(index, 1);
+    if (this.ctx && this.ctx.activity) {
+      try {
+        this.ctx.activity.log('task.delete', { id, title: removed && removed.title });
+      } catch (_) {}
+    }
     this.save();
+  }
+
+  restoreTask(task) {
+    const { normalizeTask, clone } = this.normalizers;
+    const normalized = normalizeTask(task, {
+      categories: this.data.categories,
+      isPackaged: this.ctx && this.ctx.store ? this.ctx.store.isPackaged : true
+    });
+    if (!normalized) throw new Error('Не удалось восстановить задачу');
+    if (this.data.tasks.some((t) => t.id === normalized.id)) {
+      throw new Error('Задача уже существует');
+    }
+    this.data.tasks.push(normalized);
+    if (this.ctx && this.ctx.activity) {
+      try {
+        this.ctx.activity.log('task.restore', { id: normalized.id, title: normalized.title });
+      } catch (_) {}
+    }
+    this.save();
+    return clone(normalized);
   }
 
   toggleTask(id, done) {
@@ -188,15 +248,22 @@ class TaskService {
     task.completedAt = task.done ? nowIso() : null;
     task.updatedAt = nowIso();
     if (task.done) {
+      task.status = 'done';
       task.snoozedUntil = null;
       this.setSubtasksDone(task.subtasks, true);
     } else {
+      if (task.status === 'done' || !task.status) task.status = 'todo';
       this.setSubtasksDone(task.subtasks, false);
     }
     ensureTaskInvariant(task);
+    if (this.ctx && this.ctx.activity) {
+      try {
+        this.ctx.activity.log('task.toggle', { id: task.id, done: task.done });
+      } catch (_) {}
+    }
     this.save();
 
-    // При первом завершении задачи с правилом повторения создаём следующий экземпляр
+    // При завершении повторяющейся задачи создаётся следующая задача
     if (task.done && !wasDone && task.recurrence && task.dueAt) {
       const { computeNextDueAt } = this.normalizers;
       let nextDue = computeNextDueAt(task.dueAt, task.recurrence);
@@ -212,11 +279,16 @@ class TaskService {
           description: task.description,
           dueAt: nextDue,
           priority: task.priority,
+          color: task.color,
           categoryId: task.categoryId,
+          status: 'todo',
+          tags: task.tags ? clone(task.tags) : [],
+          attachments: task.attachments ? clone(task.attachments) : [],
           reminders: task.reminders ? clone(task.reminders) : null,
           remindBefore: task.remindBefore,
           remindAtDue: task.remindAtDue,
-          recurrence: task.recurrence ? clone(task.recurrence) : null
+          recurrence: task.recurrence ? clone(task.recurrence) : null,
+          estimatedMinutes: task.estimatedMinutes
         });
       }
     }
@@ -255,6 +327,11 @@ class TaskService {
     task.completedAt = null;
     task.updatedAt = nowIso();
     ensureTaskInvariant(task);
+    if (this.ctx && this.ctx.activity) {
+      try {
+        this.ctx.activity.log('task.subtask.add', { id: task.id, subtaskId: newSubtask.id });
+      } catch (_) {}
+    }
     this.save();
     return clone(task);
   }
@@ -291,6 +368,7 @@ class TaskService {
     }
   }
 
+  // eslint-disable-next-line no-unused-vars
   updateSubtask(taskId, subtaskId, patch = {}, parentSubtaskId = null) {
     const { normalizeTitle, nowIso, clone } = this.normalizers;
 
@@ -305,10 +383,16 @@ class TaskService {
       subtask.title = title;
     }
     task.updatedAt = nowIso();
+    if (this.ctx && this.ctx.activity) {
+      try {
+        this.ctx.activity.log('task.subtask.update', { id: task.id, subtaskId });
+      } catch (_) {}
+    }
     this.save();
     return clone(task);
   }
 
+  // eslint-disable-next-line no-unused-vars
   toggleSubtask(taskId, subtaskId, done, parentSubtaskId = null) {
     const { ensureTaskInvariant, nowIso, clone } = this.normalizers;
 
@@ -324,7 +408,15 @@ class TaskService {
     }
     task.updatedAt = nowIso();
     ensureTaskInvariant(task);
-
+    if (this.ctx && this.ctx.activity) {
+      try {
+        this.ctx.activity.log('task.subtask.toggle', {
+          id: task.id,
+          subtaskId,
+          done: subtask.done
+        });
+      } catch (_) {}
+    }
     this.save();
     return clone(task);
   }
@@ -349,7 +441,11 @@ class TaskService {
 
     task.updatedAt = nowIso();
     ensureTaskInvariant(task);
-
+    if (this.ctx && this.ctx.activity) {
+      try {
+        this.ctx.activity.log('task.subtask.delete', { id: task.id, subtaskId });
+      } catch (_) {}
+    }
     this.save();
     return clone(task);
   }
@@ -369,6 +465,11 @@ class TaskService {
 
     task.snoozedUntil = until;
     task.updatedAt = nowIso();
+    if (this.ctx && this.ctx.activity) {
+      try {
+        this.ctx.activity.log('task.snooze', { id: task.id, until });
+      } catch (_) {}
+    }
     this.save();
     return clone(task);
   }
@@ -397,7 +498,14 @@ class TaskService {
     const before = this.data.tasks.length;
     this.data.tasks = this.data.tasks.filter((task) => !task.done);
     const removed = before - this.data.tasks.length;
-    if (removed > 0) this.save();
+    if (removed > 0) {
+      if (this.ctx && this.ctx.activity) {
+        try {
+          this.ctx.activity.log('task.clearCompleted', { removed });
+        } catch (_) {}
+      }
+      this.save();
+    }
     return removed;
   }
 
@@ -427,7 +535,14 @@ class TaskService {
       }
       return true;
     });
-    if (removed > 0) this.save();
+    if (removed > 0) {
+      if (this.ctx && this.ctx.activity) {
+        try {
+          this.ctx.activity.log('task.deleteMany', { removed });
+        } catch (_) {}
+      }
+      this.save();
+    }
     return { removed, errors };
   }
 

@@ -109,6 +109,9 @@ class TemplateService {
         ? patch.subtasks.map((sub) => normalizeSubtask({ ...sub, done: false })).filter(Boolean)
         : [];
     }
+    if (Object.prototype.hasOwnProperty.call(patch, 'tags') && Array.isArray(patch.tags)) {
+      template.tags = patch.tags.filter((t) => typeof t === 'string' && t).slice(0, 100);
+    }
     this.save();
     return this.normalizers.clone(template);
   }

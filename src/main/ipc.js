@@ -66,6 +66,10 @@ function registerIpc(deps) {
     store.deleteTask(id);
     return ok();
   });
+  handle('task:restore', async (_event, task) => {
+    const restored = store.restoreTask(task);
+    return ok({ result: restored });
+  });
 
   handle('task:toggle', async (_event, payload) => {
     const task = store.toggleTask(payload.id, payload.done);
@@ -135,6 +139,10 @@ function registerIpc(deps) {
     store.deleteNote(id);
     return ok();
   });
+  handle('note:restore', async (_event, note) => {
+    const restored = store.restoreNote(note);
+    return ok({ result: restored });
+  });
 
   handle('note:toggle', async (_event, payload) => {
     const note = store.toggleNote(payload.id, payload.done);
@@ -195,6 +203,48 @@ function registerIpc(deps) {
     store.deleteCategory(id);
     return ok();
   });
+  handle('category:restore', async (_event, category) => {
+    const restored = store.restoreCategory(category);
+    return ok({ result: restored });
+  });
+
+  handle('tags:get', async () => ok({ result: store.getTags() }));
+  handle('tag:add', async (_event, input) => {
+    const tag = store.addTag(input);
+    return ok({ result: tag });
+  });
+  handle('tag:update', async (_event, payload) => {
+    const tag = store.updateTag(payload.id, payload.patch || {});
+    return ok({ result: tag });
+  });
+  handle('tag:delete', async (_event, id) => {
+    store.deleteTag(id);
+    return ok();
+  });
+
+  handle('smart-lists:get', async () => ok({ result: store.getSmartLists() }));
+  handle('smart-list:add', async (_event, input) => {
+    const list = store.addSmartList(input);
+    return ok({ result: list });
+  });
+  handle('smart-list:update', async (_event, payload) => {
+    const list = store.updateSmartList(payload.id, payload.patch || {});
+    return ok({ result: list });
+  });
+  handle('smart-list:delete', async (_event, id) => {
+    store.deleteSmartList(id);
+    return ok();
+  });
+  handle('smart-list:restore', async (_event, list) => {
+    const restored = store.restoreSmartList(list);
+    return ok({ result: restored });
+  });
+
+  handle('activity:get', async (_event, payload) => {
+    const limit = payload && payload.limit;
+    return ok({ result: store.getActivity(limit) });
+  });
+  handle('stats:get', async () => ok({ result: store.getStats() }));
 
   handle('tasks:clear-completed', async () => {
     const removed = store.clearCompleted();
@@ -322,10 +372,69 @@ function registerIpc(deps) {
     return ok({ result: { path } });
   });
 
+  handle('data:list-backups', async () => {
+    const backups = store.listBackups().map((b) => ({
+      name: b.name,
+      path: b.filePath,
+      mtime: b.mtime,
+      kind: b.kind
+    }));
+    return ok({ result: backups });
+  });
+
+  handle('data:restore-backup', async (_event, payload) => {
+    const filePath = payload && payload.path ? payload.path : payload;
+    const result = store.restoreBackup(filePath);
+    return ok({ result });
+  });
+
+  handle('data:restore-backup-pick', async (event) => {
+    const result = await showOpenDialog(event, {
+      title: 'Восстановить из резервной копии',
+      defaultPath: store.backupDir,
+      properties: ['openFile'],
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    });
+
+    if (result.canceled || !result.filePaths.length) {
+      return ok({ result: { canceled: true } });
+    }
+
+    const restored = store.restoreBackup(result.filePaths[0]);
+    return ok({ result: restored });
+  });
+
   handle('data:open-folder', async () => {
     const error = await shell.openPath(store.getDataDir());
     if (error) throw new Error(error);
     return ok();
+  });
+
+  handle('attachments:get', async () => ok({ result: store.getAttachments() }));
+  handle('attachment:add-pick', async (event, payload) => {
+    const result = await showOpenDialog(event, {
+      title: 'Добавить вложение',
+      properties: ['openFile']
+    });
+    if (result.canceled || !result.filePaths.length) {
+      return ok({ result: { canceled: true } });
+    }
+    const attachment = store.addAttachmentFromPath(result.filePaths[0], payload || {});
+    return ok({ result: attachment });
+  });
+  handle('attachment:open', async (_event, id) => {
+    const filePath = store.getAttachmentPath(id);
+    const error = await shell.openPath(filePath);
+    if (error) throw new Error(error);
+    return ok();
+  });
+  handle('attachment:delete', async (_event, id) => {
+    store.deleteAttachment(id);
+    return ok();
+  });
+  handle('attachments:gc', async () => {
+    const changed = store.gcAttachments();
+    return ok({ result: { changed: Boolean(changed) } });
   });
 
   handle('notification:test', async () => {

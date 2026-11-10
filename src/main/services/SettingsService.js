@@ -81,6 +81,14 @@ class SettingsService {
       }
       next.dataEncryption = Boolean(patch.dataEncryption);
     }
+    if (Object.prototype.hasOwnProperty.call(patch, 'defaultView')) {
+      const allowed = ['list', 'kanban', 'calendar', 'stats'];
+      if (allowed.includes(patch.defaultView)) next.defaultView = patch.defaultView;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'calendarView')) {
+      const allowed = ['month', 'week', 'day'];
+      if (allowed.includes(patch.calendarView)) next.calendarView = patch.calendarView;
+    }
 
     this.data.settings = next;
     this.save();

@@ -3,6 +3,7 @@
 (function () {
   function dueMatchesView(task, view, now, U) {
     if (view === 'inbox') return !task.dueAt;
+    if (view === 'nodue') return !task.dueAt;
     if (!task.dueAt) return false;
     const due = Date.parse(task.dueAt);
     if (!Number.isFinite(due)) return false;
@@ -13,6 +14,17 @@
     if (view === 'overdue') return due < now.getTime();
     if (view === 'soon')
       return due >= now.getTime() && due - now.getTime() <= 7 * 24 * 60 * 60 * 1000;
+
+    if (view === 'week') {
+      const day = (now.getDay() + 6) % 7; // Mon=0
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
+      const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+      return dueDate >= start && dueDate < end;
+    }
+    if (view === 'month') {
+      return dueDate.getFullYear() === now.getFullYear() && dueDate.getMonth() === now.getMonth();
+    }
+
     return false;
   }
 
@@ -40,11 +52,25 @@
 
     const query = state.search.trim().toLowerCase();
     if (query) {
+      const catById = new Map((state.data.categories || []).map((c) => [c.id, c]));
+      const subtaskMatches = (subs) =>
+        Array.isArray(subs) &&
+        subs.some(
+          (sub) =>
+            String(sub && sub.title ? sub.title : '')
+              .toLowerCase()
+              .includes(query) || subtaskMatches(sub && sub.subtasks)
+        );
       list = list.filter((task) => {
+        const tagsText = Array.isArray(task.tags) ? task.tags.join(' ').toLowerCase() : '';
+        const cat = task.categoryId ? catById.get(task.categoryId) : null;
+        const catName = cat && cat.name ? String(cat.name).toLowerCase() : '';
         return (
           task.title.toLowerCase().includes(query) ||
           (task.description || '').toLowerCase().includes(query) ||
-          (task.subtasks || []).some((sub) => sub.title.toLowerCase().includes(query))
+          tagsText.includes(query) ||
+          catName.includes(query) ||
+          subtaskMatches(task.subtasks)
         );
       });
     }
@@ -53,8 +79,37 @@
       list = list.filter((task) => task.priority === state.priorityFilter);
     }
 
+    if (state.statusFilter) {
+      list = list.filter(
+        (task) => (task.status || (task.done ? 'done' : 'todo')) === state.statusFilter
+      );
+    }
+
+    if (state.tagFilter) {
+      list = list.filter((task) => Array.isArray(task.tags) && task.tags.includes(state.tagFilter));
+    }
+
+    if (state.attachmentsFilter === 'with') {
+      list = list.filter((task) => Array.isArray(task.attachments) && task.attachments.length > 0);
+    } else if (state.attachmentsFilter === 'without') {
+      list = list.filter(
+        (task) => !Array.isArray(task.attachments) || task.attachments.length === 0
+      );
+    }
+
     if (state.dueFilter && state.view !== 'inbox' && state.view !== 'notes') {
       list = list.filter((task) => dueMatchesView(task, state.dueFilter, now, U));
+    }
+
+    if ((state.dueFrom || state.dueTo) && state.view !== 'notes') {
+      const fromTs = state.dueFrom ? new Date(`${state.dueFrom}T00:00:00`).getTime() : -Infinity;
+      const toTs = state.dueTo ? new Date(`${state.dueTo}T23:59:59.999`).getTime() : Infinity;
+      list = list.filter((task) => {
+        if (!task.dueAt) return false;
+        const due = Date.parse(task.dueAt);
+        if (!Number.isFinite(due)) return false;
+        return due >= fromTs && due <= toTs;
+      });
     }
 
     return list.sort((a, b) => compareTasks(a, b, state, U));
@@ -62,6 +117,13 @@
 
   function compareTasks(a, b, state, U) {
     if (a.done !== b.done) return a.done ? 1 : -1;
+
+    if (state.sort === 'manual') {
+      const ao = Number.isFinite(Number(a.order)) ? Number(a.order) : 0;
+      const bo = Number.isFinite(Number(b.order)) ? Number(b.order) : 0;
+      if (ao !== bo) return ao - bo;
+      return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+    }
 
     if (state.sort === 'title') {
       return a.title.localeCompare(b.title, 'ru', { sensitivity: 'base' });

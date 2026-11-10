@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
@@ -78,14 +78,30 @@
           <div class="sidebar-section-head">
             <span>Сроки</span>
           </div>
-          <select class="due-filter-select" id="due-filter" type="button">
-            <option value="">Все со сроком</option>
-            <option value="inbox">Без срока (Входящие)</option>
+          <select class="due-filter-select" id="due-filter">
+            <option value="">Все по сроку</option>
+            <option value="nodue">Без срока</option>
             <option value="today">Сегодня</option>
             <option value="tomorrow">Завтра</option>
+            <option value="week">На этой неделе</option>
+            <option value="month">В этом месяце</option>
             <option value="overdue">Просроченные</option>
-            <option value="soon">Ближайшая неделя</option>
+            <option value="soon">Ближайшие 7 дней</option>
           </select>
+          <div class="due-range">
+            <input
+              class="field-input due-range-input"
+              id="due-from"
+              type="date"
+              aria-label="Срок с"
+            />
+            <input
+              class="field-input due-range-input"
+              id="due-to"
+              type="date"
+              aria-label="Срок по"
+            />
+          </div>
         </div>
 
         <div class="sidebar-section">
@@ -124,6 +140,64 @@
             <option value="normal">Обычный</option>
             <option value="low">Низкий</option>
           </select>
+        </div>
+
+        <div class="sidebar-section" id="status-filter-section">
+          <div class="sidebar-section-head">
+            <span>Статус</span>
+          </div>
+          <select id="status-filter" class="select select-compact">
+            <option value="">Все статусы</option>
+            <option value="todo">К выполнению</option>
+            <option value="in_progress">В работе</option>
+            <option value="done">Готово</option>
+          </select>
+        </div>
+
+        <div class="sidebar-section" id="tag-filter-section">
+          <div class="sidebar-section-head">
+            <span>Тег</span>
+          </div>
+          <select id="tag-filter" class="select select-compact">
+            <option value="">Все теги</option>
+          </select>
+        </div>
+
+        <div class="sidebar-section" id="attachments-filter-section">
+          <div class="sidebar-section-head">
+            <span>Вложения</span>
+          </div>
+          <select id="attachments-filter" class="select select-compact">
+            <option value="">Все задачи</option>
+            <option value="with">С вложениями</option>
+            <option value="without">Без вложений</option>
+          </select>
+        </div>
+
+        <div class="sidebar-section" id="smart-lists-section">
+          <div class="sidebar-section-head">
+            <span>Списки</span>
+            <button
+              class="icon-btn small"
+              id="save-smart-list-btn"
+              type="button"
+              title="Сохранить текущий фильтр как список"
+              aria-label="Сохранить текущий фильтр как список"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </div>
+          <div class="smart-list-list" id="smart-list-list"></div>
         </div>
 
         <div class="sidebar-footer">
@@ -256,10 +330,22 @@
               <button class="chip" data-filter="all" type="button">Все</button>
               <button class="chip" data-filter="done" type="button">Выполненные</button>
             </div>
+            <div class="view-mode-switch" id="view-mode-group" role="group" aria-label="Вид">
+              <button class="chip is-active" data-view-mode="list" type="button" title="Список">
+                Список
+              </button>
+              <button class="chip" data-view-mode="board" type="button" title="Канбан">
+                Канбан
+              </button>
+              <button class="chip" data-view-mode="calendar" type="button" title="Календарь">
+                Календарь
+              </button>
+            </div>
             <div class="sort-wrap">
               <label class="sort-label" for="sort-select">Сортировка</label>
               <select id="sort-select" class="select select-compact">
                 <option value="smart">По важности</option>
+                <option value="manual">По порядку</option>
                 <option value="due">По сроку</option>
                 <option value="created">По дате создания</option>
                 <option value="title">По названию</option>
@@ -441,6 +527,17 @@
 
           <div class="field-row">
             <label class="field field-grow">
+              <span class="field-label">Статус</span>
+              <select id="task-status-input" class="select">
+                <option value="todo">К выполнению</option>
+                <option value="in_progress">В работе</option>
+                <option value="done">Готово</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="field-row">
+            <label class="field field-grow">
               <span class="field-label">Цвет задачи</span>
               <div class="color-grid task-color-grid" id="task-color-grid">
                 <button
@@ -614,6 +711,33 @@
             <p class="field-hint">
               Интервал — через сколько дней, недель или месяцев повторять задачу (1 — каждый день,
               неделю или месяц). При выполнении задачи создаётся следующий экземпляр по расписанию.
+            </p>
+          </div>
+
+          <label class="field">
+            <span class="field-label">Теги <span class="field-hint">через запятую</span></span>
+            <input
+              type="text"
+              id="task-tags-input"
+              class="input"
+              list="tag-suggestions"
+              maxlength="500"
+              placeholder="например: работа, срочно"
+              autocomplete="off"
+            />
+            <div class="tag-input-chips" id="task-tags-chips"></div>
+          </label>
+
+          <div class="field attachments-field" id="task-attachments-field">
+            <div class="field-label-row">
+              <span class="field-label">Вложения</span>
+              <button class="btn btn-ghost btn-sm" id="task-attachment-add-btn" type="button">
+                Добавить файл
+              </button>
+            </div>
+            <div class="attachment-list" id="task-attachment-list"></div>
+            <p class="field-hint" id="task-attachment-hint">
+              Сохраните задачу, чтобы прикреплять файлы.
             </p>
           </div>
 
@@ -937,12 +1061,36 @@
           </section>
 
           <section class="settings-section">
+            <h3 class="settings-title">Теги</h3>
+            <div class="settings-inline-row">
+              <input
+                type="text"
+                id="tag-new-name"
+                class="input"
+                placeholder="Новый тег"
+                maxlength="40"
+              />
+              <button class="btn btn-ghost" id="tag-add-btn" type="button">Добавить</button>
+            </div>
+            <div class="tag-manage-list" id="tag-manage-list"></div>
+            <p class="settings-note">
+              Справочник тегов для выбора. В задачах и заметках теги сохраняются по названию.
+            </p>
+          </section>
+
+          <section class="settings-section">
             <h3 class="settings-title">Данные</h3>
             <div class="settings-actions">
               <button class="btn btn-ghost" id="export-btn" type="button">Экспорт…</button>
               <button class="btn btn-ghost" id="export-csv-btn" type="button">Экспорт CSV…</button>
               <button class="btn btn-ghost" id="import-btn" type="button">Импорт…</button>
               <button class="btn btn-ghost" id="backup-btn" type="button">Резервная копия</button>
+              <button class="btn btn-ghost" id="restore-backup-btn" type="button">
+                Восстановить…
+              </button>
+              <button class="btn btn-ghost" id="attachments-gc-btn" type="button">
+                Очистить вложения
+              </button>
               <button class="btn btn-ghost" id="open-folder-btn" type="button">
                 Открыть папку
               </button>
@@ -962,8 +1110,25 @@
             </label>
             <p class="settings-note">
               Данные хранятся локально: <span class="mono" id="data-dir-label">%APPDATA%</span>.
-              Хранятся 5 последних копий.
+              Хранятся 5 последних копий (pre-migration и before-* сохраняются отдельно).
             </p>
+            <div class="backup-list-wrap" id="backup-list-wrap">
+              <div class="field-label">Резервные копии</div>
+              <div class="backup-list" id="backup-list"></div>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <h3 class="settings-title">Статистика и активность</h3>
+            <div class="stats-grid" id="stats-grid"></div>
+            <div class="field-label" style="margin-top: 10px">Последние действия</div>
+            <input
+              class="field-input"
+              id="activity-filter"
+              type="text"
+              placeholder="Фильтр по действиям..."
+            />
+            <div class="activity-list" id="activity-list"></div>
           </section>
 
           <section class="settings-section">
@@ -1040,6 +1205,32 @@
               placeholder="Что-то пришло в голову…"
             ></textarea>
           </label>
+          <label class="field">
+            <span class="field-label">Теги <span class="field-hint">через запятую</span></span>
+            <input
+              type="text"
+              id="note-tags-input"
+              class="input"
+              list="tag-suggestions"
+              maxlength="500"
+              placeholder="например: идеи, важно"
+              autocomplete="off"
+            />
+            <div class="tag-input-chips" id="note-tags-chips"></div>
+          </label>
+          <div class="field attachments-field" id="note-attachments-field">
+            <div class="field-label-row">
+              <span class="field-label">Вложения</span>
+              <button class="btn btn-ghost btn-sm" id="note-attachment-add-btn" type="button">
+                Добавить файл
+              </button>
+            </div>
+            <div class="attachment-list" id="note-attachment-list"></div>
+            <p class="field-hint" id="note-attachment-hint">
+              Сохраните заметку, чтобы прикреплять файлы.
+            </p>
+          </div>
+
           <div class="field">
             <span class="field-label">Цвет</span>
             <div class="color-grid" id="note-color-picker"></div>
@@ -1054,6 +1245,7 @@
       </div>
     </div>
 
+    <datalist id="tag-suggestions"></datalist>
     <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
 
     <script src="../shared/utils.js"></script>

@@ -406,9 +406,9 @@ app.whenReady().then(() => {
           });
         }
       });
-      autoUpdater.on('update-not-available', (info) => console.log('Обновлений нет'));
+      autoUpdater.on('update-not-available', () => console.log('Обновлений нет'));
       autoUpdater.on('error', (err) => console.error('Ошибка обновления:', err));
-      autoUpdater.on('update-downloaded', (info) => {
+      autoUpdater.on('update-downloaded', () => {
         // Показываем уведомление и перезапускаем приложение
         autoUpdater.quitAndInstall();
       });

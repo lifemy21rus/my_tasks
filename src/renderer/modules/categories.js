@@ -2,7 +2,18 @@
 
 (function () {
   function createCategoriesModule(ctx) {
-    const { els, state, U, setSvgIcon, api, invoke, confirmDialog, currentCategory } = ctx;
+    const {
+      els,
+      state,
+      U,
+      setSvgIcon,
+      api,
+      invoke,
+      confirmDialog,
+      currentCategory,
+      toast,
+      renderAll
+    } = ctx;
 
     function renderCategories() {
       if (state.view === 'notes') {
@@ -174,18 +185,68 @@
     async function deleteCategoryWithConfirm() {
       const draft = state.categoryDraft;
       if (!draft || !draft.id) return;
+      const category = currentCategory(draft.id) || {
+        id: draft.id,
+        name: draft.name || 'Категория',
+        color: draft.color
+      };
+      const snapshot = JSON.parse(JSON.stringify(category));
+      const affectedTaskIds = (state.data.tasks || [])
+        .filter((t) => t && t.categoryId === draft.id)
+        .map((t) => t.id);
+      const affectedNoteIds = (state.data.notes || [])
+        .filter((n) => n && n.categoryId === draft.id)
+        .map((n) => n.id);
+      const wasViewing = state.view === 'category' && state.categoryId === draft.id;
+
       const confirmed = await confirmDialog({
         title: 'Удалить категорию?',
         text: 'Задачи останутся, но перейдут в «Без категории».',
         okText: 'Удалить'
       });
       if (!confirmed) return;
-      if (state.view === 'category' && state.categoryId === draft.id) {
+      if (wasViewing) {
         state.view = 'all';
         state.categoryId = null;
       }
-      const res = await invoke(api.deleteCategory(draft.id), 'Категория удалена');
-      if (res) closeCategoryModal();
+      const res = await invoke(api.deleteCategory(draft.id));
+      if (res) {
+        closeCategoryModal();
+        if (typeof toast === 'function') {
+          toast('Категория удалена', 'success', {
+            label: 'Отменить',
+            onClick: async () => {
+              const restored = await invoke(
+                api.restoreCategory(snapshot),
+                'Категория восстановлена'
+              );
+              if (!restored) return;
+              const ops = [];
+              for (const id of affectedTaskIds)
+                ops.push(api.updateTask(id, { categoryId: snapshot.id }));
+              for (const id of affectedNoteIds)
+                ops.push(api.updateNote(id, { categoryId: snapshot.id }));
+              if (ops.length) {
+                try {
+                  await Promise.all(ops);
+                } catch (_) {
+                  // best-effort reassignment
+                }
+                const finalState = await api.getState();
+                if (finalState && finalState.ok) {
+                  state.data = finalState.data;
+                  state.runtime = finalState.runtime;
+                }
+              }
+              if (wasViewing) {
+                state.view = 'category';
+                state.categoryId = snapshot.id;
+              }
+              if (typeof renderAll === 'function') renderAll();
+            }
+          });
+        }
+      }
     }
 
     return {

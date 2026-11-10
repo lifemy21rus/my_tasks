@@ -33,6 +33,8 @@ const report = store.addTask({
   dueAt: at(0, 18, 0),
   priority: 'high',
   categoryId: work.id,
+  status: 'in_progress',
+  tags: ['работа', 'отчёт'],
   remindBefore: 60,
   remindAtDue: true
 });
@@ -59,6 +61,7 @@ store.addTask({
   dueAt: at(1, 19, 0),
   priority: 'normal',
   categoryId: personal.id,
+  tags: ['дом', 'покупки'],
   remindBefore: -1,
   remindAtDue: true
 });
@@ -88,7 +91,8 @@ store.toggleTask(internet.id, true);
 store.addNote({
   title: 'Идея для отчёта',
   content: 'Добавить раздел с графиком по отделам и сравнение с прошлым кварталом.',
-  color: '#4ecdc4'
+  color: '#4ecdc4',
+  tags: ['работа', 'идеи']
 });
 
 store.addNote({

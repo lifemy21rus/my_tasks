@@ -100,6 +100,95 @@
       if (res) toast('Резервная копия создана', 'success');
     });
 
+    if (els.restoreBackupBtn) {
+      els.restoreBackupBtn.addEventListener('click', async () => {
+        const confirmed = await confirmDialog({
+          title: 'Восстановить из резервной копии?',
+          text: 'Текущие данные будут заменены выбранной копией. Перед восстановлением будет создана резервная копия текущего состояния.',
+          okText: 'Восстановить'
+        });
+        if (!confirmed) return;
+        const res = await invoke(
+          api.restoreBackupPick ? api.restoreBackupPick() : api.listBackups()
+        );
+        if (res && res.result && !res.result.canceled) {
+          toast('Данные восстановлены из резервной копии', 'success');
+        }
+      });
+    }
+
+    if (els.backupList) {
+      els.backupList.addEventListener('click', async (event) => {
+        const btn = event.target.closest('[data-action="restore-backup-item"]');
+        if (!btn) return;
+        const backupPath = btn.dataset.path;
+        if (!backupPath) return;
+        const confirmed = await confirmDialog({
+          title: 'Восстановить из резервной копии?',
+          text: 'Текущие данные будут заменены выбранной копией. Перед восстановлением будет создана резервная копия текущего состояния.',
+          okText: 'Восстановить'
+        });
+        if (!confirmed) return;
+        const res = await invoke(api.restoreBackup(backupPath));
+        if (res && res.result && !res.result.canceled) {
+          toast('Данные восстановлены из резервной копии', 'success');
+        }
+      });
+    }
+
+    if (els.attachmentsGcBtn) {
+      els.attachmentsGcBtn.addEventListener('click', async () => {
+        const res = await invoke(api.gcAttachments());
+        if (res) toast('Очистка вложений выполнена', 'success');
+      });
+    }
+
+    if (els.tagAddBtn && els.tagNewName) {
+      els.tagAddBtn.addEventListener('click', async () => {
+        const name = els.tagNewName.value.trim();
+        if (!name) return;
+        const res = await invoke(api.addTag({ name }), 'Тег добавлен');
+        if (res) {
+          els.tagNewName.value = '';
+          if (ctx.renderTagManageList) ctx.renderTagManageList();
+          else if (ctx.renderSettings) ctx.renderSettings();
+        }
+      });
+      els.tagNewName.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          els.tagAddBtn.click();
+        }
+      });
+    }
+
+    if (els.tagManageList) {
+      els.tagManageList.addEventListener('click', async (event) => {
+        const btn = event.target.closest('[data-action]');
+        if (!btn) return;
+        const id = btn.dataset.id;
+        const tag = ((ctx.state && ctx.state.data && ctx.state.data.tags) || []).find(
+          (t) => t.id === id
+        );
+        if (!tag) return;
+        if (btn.dataset.action === 'rename-tag') {
+          const name = window.prompt('Новое название тега', tag.name || '');
+          if (!name || name.trim() === tag.name) return;
+          const res = await invoke(api.updateTag(id, { name: name.trim() }), 'Тег обновлён');
+          if (res && ctx.renderTagManageList) ctx.renderTagManageList();
+        } else if (btn.dataset.action === 'delete-tag') {
+          const confirmed = await confirmDialog({
+            title: 'Удалить тег?',
+            text: `Тег «${tag.name}» будет удалён из справочника и убран из задач/заметок.`,
+            okText: 'Удалить'
+          });
+          if (!confirmed) return;
+          const res = await invoke(api.deleteTag(id), 'Тег удалён');
+          if (res && ctx.renderTagManageList) ctx.renderTagManageList();
+        }
+      });
+    }
+
     els.openFolderBtn.addEventListener('click', async () => {
       const res = await invoke(api.openDataFolder());
       if (res) toast('Папка с данными открыта', 'success');

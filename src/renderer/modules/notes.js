@@ -36,7 +36,16 @@
       body.type = 'button';
       body.className = 'note-body';
       body.title = 'Редактировать заметку';
-      body.addEventListener('click', () => onEditNote(note.id));
+      body.addEventListener('click', (event) => {
+        const tagBtn = event.target.closest('[data-action="filter-tag"]');
+        if (tagBtn) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (ctx.onFilterTag) ctx.onFilterTag(tagBtn.dataset.tag || '', 'note');
+          return;
+        }
+        onEditNote(note.id);
+      });
 
       const title = document.createElement('span');
       title.className = 'note-card-title';
@@ -48,6 +57,34 @@
         content.className = 'note-card-content';
         content.textContent = note.content;
         body.appendChild(content);
+      }
+
+      if (
+        (Array.isArray(note.attachments) && note.attachments.length > 0) ||
+        (Array.isArray(note.tags) && note.tags.length > 0)
+      ) {
+        const metaRow = document.createElement('span');
+        metaRow.className = 'note-card-tags';
+        if (Array.isArray(note.attachments) && note.attachments.length > 0) {
+          const att = document.createElement('span');
+          att.className = 'meta-attachments';
+          att.title = `Вложений: ${note.attachments.length}`;
+          att.textContent = `📎 ${note.attachments.length}`;
+          metaRow.appendChild(att);
+        }
+        if (Array.isArray(note.tags) && note.tags.length > 0) {
+          for (const tag of note.tags) {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'tag-chip';
+            chip.dataset.action = 'filter-tag';
+            chip.dataset.tag = String(tag);
+            chip.textContent = String(tag);
+            chip.title = `Фильтр по тегу: ${String(tag)}`;
+            metaRow.appendChild(chip);
+          }
+        }
+        body.appendChild(metaRow);
       }
 
       const actions = document.createElement('div');

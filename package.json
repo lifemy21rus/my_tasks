@@ -1,7 +1,7 @@
 {
   "name": "my-tasks",
   "productName": "Планировщик",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "description": "Локальный планировщик задач для Windows",
   "main": "src/main/main.js",
   "author": "MyTasks",
@@ -10,7 +10,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "test": "node --test tests/basic.test.js",
+    "test": "node --test tests/basic.test.js tests/migration.test.js",
     "lint": "eslint src tests scripts",
     "lint:fix": "eslint src tests scripts --fix",
     "fmt": "prettier --write \"src/**/*.{js,html,css}\" \"tests/**/*.js\" \"scripts/**/*.js\"",

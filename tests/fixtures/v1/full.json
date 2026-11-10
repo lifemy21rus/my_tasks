@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "settings": {
+    "theme": "dark",
+    "hotkey": "CommandOrControl+Shift+Space",
+    "defaultRemindBefore": 30,
+    "defaultRemindAtDue": true,
+    "miniPanelTabs": "tasks"
+  },
+  "categories": [
+    { "id": "cat1", "name": "Работа", "color": "#2563eb" }
+  ],
+  "tasks": [
+    {
+      "id": "task1",
+      "title": "Задача с подзадачами",
+      "description": "Описание",
+      "dueAt": "2026-12-01T15:00:00.000Z",
+      "priority": "high",
+      "categoryId": "cat1",
+      "done": false,
+      "createdAt": "2026-01-01T10:00:00.000Z",
+      "updatedAt": "2026-01-02T10:00:00.000Z",
+      "remindBefore": 60,
+      "remindAtDue": true,
+      "subtasks": [
+        { "id": "s1", "title": "Шаг 1", "done": false, "createdAt": "2026-01-01T10:00:00.000Z", "subtasks": [] },
+        { "id": "s2", "title": "Шаг 2", "done": true, "createdAt": "2026-01-01T10:00:00.000Z", "subtasks": [
+          { "id": "s2a", "title": "Вложенный", "done": true, "createdAt": "2026-01-01T10:00:00.000Z", "subtasks": [] }
+        ] }
+      ],
+      "recurrence": { "type": "weekly", "interval": 1, "endDate": null, "daysOfWeek": [1, 3] }
+    },
+    {
+      "id": "task2",
+      "title": "Выполненная",
+      "done": true,
+      "completedAt": "2026-01-03T10:00:00.000Z",
+      "createdAt": "2026-01-01T10:00:00.000Z",
+      "updatedAt": "2026-01-03T10:00:00.000Z",
+      "subtasks": []
+    }
+  ],
+  "notes": [
+    {
+      "id": "note1",
+      "title": "Заметка в архиве",
+      "content": "Текст",
+      "color": "#ff6b6b",
+      "done": false,
+      "archived": true,
+      "categoryId": "cat1",
+      "createdAt": "2026-01-01T10:00:00.000Z",
+      "updatedAt": "2026-01-02T10:00:00.000Z"
+    }
+  ],
+  "templates": [
+    { "id": "tpl1", "title": "Шаблон", "content": "Содержимое" }
+  ],
+  "taskTemplates": []
+}

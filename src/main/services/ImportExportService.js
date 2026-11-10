@@ -1,12 +1,14 @@
 'use strict';
 
 const fs = require('fs');
+const path = require('path');
 
 /**
  * Импорт и экспорт данных.
  */
 class ImportExportService {
   constructor(ctx) {
+    this.ctx = ctx;
     this.data = ctx.data;
     this.save = ctx.save;
     this.normalizers = ctx.normalizers;
@@ -17,14 +19,47 @@ class ImportExportService {
     this.MAX_IMPORT_NOTES = 10000;
   }
 
+  _sourceData() {
+    if (this.ctx && this.ctx.store && this.ctx.store.data) return this.ctx.store.data;
+    return this.data;
+  }
+
+  _copyDirSync(src, dest) {
+    if (!fs.existsSync(src)) return false;
+    fs.mkdirSync(dest, { recursive: true });
+    for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+      const s = path.join(src, entry.name);
+      const d = path.join(dest, entry.name);
+      if (entry.isDirectory()) this._copyDirSync(s, d);
+      else if (entry.isFile()) fs.copyFileSync(s, d);
+    }
+    return true;
+  }
+
+  _attachmentsDir() {
+    const dataDir = (this.ctx && this.ctx.store && this.ctx.store.dataDir) || this.ctx.dataDir;
+    return dataDir ? path.join(dataDir, 'attachments') : null;
+  }
+
   exportTo(filePath) {
-    fs.writeFileSync(filePath, `${JSON.stringify(this.data, null, 2)}\n`, 'utf8');
+    fs.writeFileSync(filePath, `${JSON.stringify(this._sourceData(), null, 2)}\n`, 'utf8');
+    try {
+      const src = this._attachmentsDir();
+      if (src && fs.existsSync(src)) {
+        const dest = `${filePath}.attachments`;
+        fs.rmSync(dest, { recursive: true, force: true });
+        this._copyDirSync(src, dest);
+      }
+    } catch (_) {
+      // attachments export is best-effort
+    }
   }
 
   exportToCsv(filePath) {
+    const data = this._sourceData() || { tasks: [] };
     const lines = [];
-    lines.push('id,title,description,dueAt,priority,categoryId,done,createdAt');
-    for (const task of this.data.tasks) {
+    lines.push('id,title,description,dueAt,priority,categoryId,done,status,createdAt,tags');
+    for (const task of data.tasks || []) {
       const esc = (value) =>
         String(value === null || value === undefined ? '' : value).replace(/"/g, '""');
       const row = [
@@ -35,7 +70,9 @@ class ImportExportService {
         esc(task.priority || ''),
         esc(task.categoryId || ''),
         task.done ? 1 : 0,
-        esc(task.createdAt || '')
+        esc(task.status || (task.done ? 'done' : 'todo')),
+        esc(task.createdAt || ''),
+        `"${esc(Array.isArray(task.tags) ? task.tags.join('|') : '')}"`
       ];
       lines.push(row.join(','));
     }
@@ -82,12 +119,63 @@ class ImportExportService {
       this.createBackup('before-import');
     }
 
-    this.data = normalized;
+    if (this.ctx && typeof this.ctx.replaceData === 'function') {
+      this.ctx.replaceData(normalized);
+    } else if (this.ctx && this.ctx.store && typeof this.ctx.store.replaceData === 'function') {
+      this.ctx.store.replaceData(normalized);
+    } else {
+      this.data = normalized;
+      if (this.ctx) this.ctx.data = normalized;
+    }
+
     this.save();
+
+    // import attachments bundle if present next to json file
+    try {
+      const dest = this._attachmentsDir();
+      if (dest) {
+        const candidates = [
+          `${filePath}.attachments`,
+          filePath.replace(/\.json$/i, '.attachments'),
+          path.join(
+            path.dirname(filePath),
+            `${path.basename(filePath, path.extname(filePath))}.attachments`
+          )
+        ];
+        const src = candidates.find((p) => p && fs.existsSync(p) && fs.statSync(p).isDirectory());
+        if (src) {
+          fs.rmSync(dest, { recursive: true, force: true });
+          fs.mkdirSync(dest, { recursive: true });
+          this._copyDirSync(src, dest);
+          if (
+            this.ctx &&
+            this.ctx.store &&
+            this.ctx.store.attachments &&
+            typeof this.ctx.store.attachments.gc === 'function'
+          ) {
+            try {
+              this.ctx.store.attachments.gc({ save: true, silent: true });
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {
+      // attachments import is best-effort
+    }
+
+    if (this.ctx && this.ctx.activity) {
+      try {
+        this.ctx.activity.log('data.import', {
+          tasks: normalized.tasks.length,
+          notes: normalized.notes.length
+        });
+      } catch (_) {}
+    }
+    const resultData = this._sourceData() || normalized;
     return {
-      tasks: this.data.tasks.length,
-      categories: this.data.categories.length,
-      notes: this.data.notes.length
+      tasks: (resultData.tasks || []).length,
+      categories: (resultData.categories || []).length,
+      notes: (resultData.notes || []).length
     };
   }
 }

@@ -10,11 +10,14 @@
     data: { settings: {}, categories: [], tasks: [], notes: [] },
     runtime: {},
     view: 'all',
+    viewMode: 'list',
     categoryId: null,
     filter: 'active',
     search: '',
     sort: 'smart',
     dueFilter: '',
+    dueFrom: '',
+    dueTo: '',
     expanded: new Set(),
     expandedNestedSubtasks: new Set(),
     draft: null,
@@ -24,6 +27,14 @@
     confirmReturn: null,
     lastFocusedTask: null,
     priorityFilter: '',
+    statusFilter: '',
+    tagFilter: '',
+    attachmentsFilter: '',
+    activeSmartListId: null,
+    calendarMonthOffset: 0,
+    calendarMode: 'month',
+    calendarAnchor: null,
+    dragTaskId: null,
     reminderEditor: [],
     taskColor: null,
     notesArchive: false
@@ -43,9 +54,11 @@
         if (state.notesArchive && !note.archived) return false;
         if (!state.notesArchive && note.archived) return false;
         if (!query) return true;
+        const tagsText = Array.isArray(note.tags) ? note.tags.join(' ').toLowerCase() : '';
         return (
           note.title.toLowerCase().includes(query) ||
-          (note.content || '').toLowerCase().includes(query)
+          (note.content || '').toLowerCase().includes(query) ||
+          tagsText.includes(query)
         );
       })
       .sort((a, b) => {
@@ -74,14 +87,23 @@
   async function deleteNoteWithConfirm(noteId) {
     const note = state.data.notes.find((n) => n.id === noteId);
     if (!note) return;
+    const snapshot = JSON.parse(JSON.stringify(note));
     const confirmed = await confirmDialog({
       title: 'Удалить заметку навсегда?',
-      text: `«${note.title}» будет удалена без возможности восстановления.`,
+      text: `«${note.title}» будет удалена. Действие можно отменить сразу после удаления.`,
       okText: 'Удалить'
     });
     if (!confirmed) return;
-    const res = await invoke(api.deleteNote(noteId), 'Заметка удалена');
-    if (res && !els.noteModal.hidden) closeNoteModal();
+    const res = await invoke(api.deleteNote(noteId));
+    if (res) {
+      toast('Заметка удалена', 'success', {
+        label: 'Отменить',
+        onClick: async () => {
+          await invoke(api.restoreNote(snapshot), 'Заметка восстановлена');
+        }
+      });
+      if (!els.noteModal.hidden) closeNoteModal();
+    }
   }
 
   /* ------------------------------- helpers ------------------------------- */
@@ -99,7 +121,7 @@
     document.documentElement.dataset.theme = theme;
   }
 
-  function toast(message, type = 'info') {
+  function toast(message, type = 'info', action) {
     if (!message) return;
     const node = document.createElement('div');
     node.className = `toast${type === 'error' ? ' is-error' : type === 'success' ? ' is-success' : ''}`;
@@ -108,21 +130,42 @@
     const text = document.createElement('span');
     text.textContent = message;
     node.append(dot, text);
+    let closed = false;
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      node.classList.add('is-leaving');
+      setTimeout(() => node.remove(), 200);
+    };
+    if (action && action.label && typeof action.onClick === 'function') {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-ghost btn-sm toast-action';
+      btn.textContent = action.label;
+      btn.addEventListener('click', async () => {
+        try {
+          await action.onClick();
+        } finally {
+          close();
+        }
+      });
+      node.appendChild(btn);
+    }
     els.toastStack.appendChild(node);
-    setTimeout(
-      () => {
-        node.classList.add('is-leaving');
-        setTimeout(() => node.remove(), 200);
-      },
-      type === 'error' ? 4800 : 2800
-    );
+    setTimeout(close, action ? 6000 : type === 'error' ? 4800 : 2800);
   }
 
   function applyState(res) {
     if (!res) return;
     if (res.data) state.data = res.data;
     if (res.runtime) state.runtime = res.runtime;
-    if (res.runtime && res.runtime.notice) toast(res.runtime.notice, 'error');
+    if (res.runtime && res.runtime.notice) {
+      const notice = res.runtime.notice;
+      if (typeof notice === 'string') toast(notice, 'error');
+      else if (notice && typeof notice === 'object') {
+        toast(notice.message || '', notice.type || 'info');
+      }
+    }
     applyTheme();
   }
 
@@ -153,7 +196,25 @@
     onEditNote: (id) => noteModal.openNoteModal(id),
     onArchiveNote: (id) => archiveNoteWithConfirm(id),
     onDeleteNote: (id) => deleteNoteWithConfirm(id),
-    onToggleNote: (id, done) => invoke(api.toggleNote(id, done))
+    onToggleNote: async (id, done) => {
+      const res = await invoke(api.toggleNote(id, done));
+      if (!res) return;
+      toast(done ? 'Заметка выполнена' : 'Заметка возвращена в работу', 'success', {
+        label: 'Отменить',
+        onClick: async () => {
+          await invoke(api.toggleNote(id, !done));
+        }
+      });
+    },
+    onFilterTag: (tag) => {
+      if (!tag) return;
+      if (state.view === 'notes') {
+        state.search = tag;
+      } else {
+        state.tagFilter = tag;
+      }
+      renderAll();
+    }
   });
 
   function renderNotes() {
@@ -187,7 +248,9 @@
     api,
     invoke,
     confirmDialog: modals.confirmDialog,
-    currentCategory
+    currentCategory,
+    toast,
+    renderAll: () => renderAll()
   });
 
   // Сохраняем ссылку для обратного вызова изменения цвета
@@ -198,7 +261,8 @@
     state,
     api,
     invoke,
-    confirmDialog: modals.confirmDialog
+    confirmDialog: modals.confirmDialog,
+    toast
   });
 
   const reminders = window.AppReminders.create({
@@ -412,15 +476,34 @@
       }
     }
 
+    const tags = els.taskTagsInput
+      ? (() => {
+          const seen = new Set();
+          return els.taskTagsInput.value
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean)
+            .filter((t) => {
+              const key = t.toLowerCase();
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+        })()
+      : [];
+    const status = els.taskStatusInput ? els.taskStatusInput.value : draft.status || 'todo';
     const patch = {
       title,
       description: els.taskDescInput.value,
       dueAt,
       priority: els.taskPriorityInput.value,
+      status,
+      done: status === 'done',
       color: state.taskColor || undefined,
       estimatedMinutes: Number(els.taskEstimatedMinutes.value) || undefined,
       actualMinutes: Number(els.taskActualMinutes.value) || undefined,
       categoryId: els.taskCategoryInput.value || null,
+      tags,
       reminders: state.reminderEditor.length > 0 ? [...state.reminderEditor] : null,
       recurrence: buildRecurrenceFromEditor()
     };
@@ -534,7 +617,18 @@
   async function toggleTask(taskId, done) {
     const task = currentTask(taskId);
     if (!task) return;
-    await invoke(api.toggleTask(taskId, done), done ? 'Задача выполнена' : null);
+    const res = await invoke(api.toggleTask(taskId, done));
+    if (!res) return;
+    const message = done ? 'Задача выполнена' : 'Задача возвращена в работу';
+    toast(message, 'success', {
+      label: 'Отменить',
+      onClick: async () => {
+        await invoke(
+          api.toggleTask(taskId, !done),
+          done ? 'Задача возвращена в работу' : 'Задача выполнена'
+        );
+      }
+    });
   }
 
   async function toggleSubtask(taskId, subtaskId, done, parentSubtaskId = null) {
@@ -588,7 +682,10 @@
       openSettings,
       renderAll,
       renderTaskList,
-      addReminderEditor
+      addReminderEditor,
+      currentCriteria: () => view.currentCriteria(),
+      applyCriteria: (c) => view.applyCriteria(c),
+      toast
     });
 
     // task list delegation
@@ -601,7 +698,12 @@
       openSnoozeMenu,
       deleteSubtask,
       invoke,
-      api
+      api,
+      onFilterTag: (tag) => {
+        if (!tag) return;
+        state.tagFilter = tag;
+        renderAll();
+      }
     });
 
     // modal form bindings
@@ -623,6 +725,7 @@
     // settings modal and data actions
     window.AppSettingsEvents.bind({
       els,
+      state,
       api,
       invoke,
       toast,
@@ -630,7 +733,9 @@
       closeSettings,
       updateSetting,
       startHotkeyCapture,
-      handleHotkeyKeydown
+      handleHotkeyKeydown,
+      renderSettings: () => modals.renderSettings(),
+      renderTagManageList: () => modals.renderTagManageList()
     });
 
     // global UI events (modals, shortcuts)

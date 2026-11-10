@@ -16,7 +16,8 @@ const {
   normalizeTask,
   normalizeSettings,
   defaultData,
-  normalizeData
+  normalizeData,
+  migrateData
 } = N;
 
 const { SettingsService } = require('./services/SettingsService');
@@ -26,6 +27,10 @@ const { NoteService } = require('./services/NoteService');
 const { TemplateService } = require('./services/TemplateService');
 const { BackupService } = require('./services/BackupService');
 const { ImportExportService } = require('./services/ImportExportService');
+const { TagService } = require('./services/TagService');
+const { SmartListService } = require('./services/SmartListService');
+const { ActivityService } = require('./services/ActivityService');
+const { AttachmentService } = require('./services/AttachmentService');
 
 class Store extends EventEmitter {
   constructor(dataDir, options = {}) {
@@ -35,22 +40,40 @@ class Store extends EventEmitter {
     this.backupDir = path.join(dataDir, 'backups');
     this.isPackaged = Boolean(options.isPackaged);
     this.notice = null;
-    this.data = null;
+    this.data = defaultData(this.isPackaged);
 
     fs.mkdirSync(this.dataDir, { recursive: true });
     fs.mkdirSync(this.backupDir, { recursive: true });
 
+    // BackupService нужен уже на этапе load() (recovery/daily), поэтому создаём заранее.
+    this.backups = new BackupService({
+      dataDir: this.dataDir,
+      dataFile: this.dataFile,
+      backupDir: this.backupDir,
+      save: (opts) => this.save(opts),
+      getData: () => this.data,
+      utils,
+      normalizers: N
+    });
+
     this.load();
 
-    // Контекст для сервисов
+    // Контекст для сервисов (стабильная ссылка на store для актуальных данных)
     const ctx = {
-      data: this.data,
+      store: this,
+      get data() {
+        return this.store.data;
+      },
+      set data(value) {
+        this.store.data = value;
+      },
       dataDir: this.dataDir,
       dataFile: this.dataFile,
       backupDir: this.backupDir,
       isPackaged: this.isPackaged,
-      save: (options) => this.save(options),
+      save: (opts) => this.save(opts),
       emit: (event, payload) => this.emit(event, payload),
+      replaceData: (next) => this.replaceData(next),
       utils,
       normalizers: N
     };
@@ -60,16 +83,128 @@ class Store extends EventEmitter {
     this.categories = new CategoryService(ctx);
     this.notes = new NoteService(ctx);
     this.templates = new TemplateService(ctx);
-    this.backups = new BackupService(ctx);
+    this.tags = new TagService(ctx);
+    this.smartLists = new SmartListService(ctx);
+    this.activity = new ActivityService(ctx);
+    ctx.activity = this.activity;
+    this.attachments = new AttachmentService(ctx);
     this.importExport = new ImportExportService({
       ...ctx,
       createBackup: (kind) => this.backups.createBackup(kind)
     });
+
+    this._bindServiceData();
+  }
+
+  _serviceList() {
+    return [
+      this.settings,
+      this.tasks,
+      this.categories,
+      this.notes,
+      this.templates,
+      this.tags,
+      this.smartLists,
+      this.activity,
+      this.attachments,
+      this.backups,
+      this.importExport
+    ].filter(Boolean);
+  }
+
+  /* ============ Attachments (делегирование) ============ */
+
+  getAttachments() {
+    return this.attachments ? this.attachments.getAttachments() : [];
+  }
+
+  addAttachmentFromPath(filePath, options = {}) {
+    return this.attachments.addAttachmentFromPath
+      ? this.attachments.addAttachmentFromPath(filePath, options)
+      : this.attachments.addFromFile(filePath, options);
+  }
+
+  getAttachmentPath(id) {
+    return this.attachments.getPath(id);
+  }
+
+  deleteAttachment(id) {
+    return this.attachments.deleteAttachment(id);
+  }
+
+  gcAttachments() {
+    if (this.attachments) return this.attachments.gc({ save: true });
+    return false;
+  }
+
+  /* ============ Activity (делегирование) ============ */
+
+  getActivity(limit) {
+    return this.activity ? this.activity.getActivity(limit) : [];
+  }
+
+  getStats() {
+    return this.activity ? this.activity.getStats() : null;
+  }
+
+  /* ============ Tags (делегирование) ============ */
+
+  getTags() {
+    return this.tags ? this.tags.getTags() : [];
+  }
+
+  addTag(input = {}) {
+    return this.tags.addTag(input);
+  }
+
+  updateTag(id, patch = {}) {
+    return this.tags.updateTag(id, patch);
+  }
+
+  deleteTag(id) {
+    return this.tags.deleteTag(id);
+  }
+
+  /* ============ Smart lists (делегирование) ============ */
+
+  getSmartLists() {
+    return this.smartLists ? this.smartLists.getSmartLists() : [];
+  }
+
+  addSmartList(input = {}) {
+    return this.smartLists.addSmartList(input);
+  }
+
+  updateSmartList(id, patch = {}) {
+    return this.smartLists.updateSmartList(id, patch);
+  }
+
+  deleteSmartList(id) {
+    return this.smartLists.deleteSmartList(id);
+  }
+
+  restoreSmartList(list) {
+    return this.smartLists.restoreSmartList(list);
+  }
+
+  _bindServiceData() {
+    for (const svc of this._serviceList()) {
+      if (!svc) continue;
+      if (Object.prototype.hasOwnProperty.call(svc, 'data')) svc.data = this.data;
+      if (Object.prototype.hasOwnProperty.call(svc, 'ctx')) svc.ctx.data = this.data;
+      if (Object.prototype.hasOwnProperty.call(svc, 'store')) svc.store = this;
+    }
+  }
+
+  replaceData(nextData) {
+    this.data = nextData;
+    this._bindServiceData();
   }
 
   load() {
     let raw = null;
     let fromBackup = false;
+    let hadUsableFile = false;
     const fileExists = fs.existsSync(this.dataFile);
 
     if (fileExists) {
@@ -80,8 +215,9 @@ class Store extends EventEmitter {
           content = decryptData(content, password);
         }
         raw = JSON.parse(content);
+        hadUsableFile = true;
       } catch (err) {
-        const corruptName = `data.corrupt-${timestampForFile()}.json`;
+        const corruptName = `data.corrupt-${this.backups.timestampForFile()}.json`;
         try {
           fs.renameSync(this.dataFile, path.join(this.dataDir, corruptName));
         } catch (_) {
@@ -90,20 +226,54 @@ class Store extends EventEmitter {
         const latest = this.backups.latestBackup();
         if (latest) {
           try {
-            raw = JSON.parse(fs.readFileSync(latest, 'utf8'));
+            let backupContent = fs.readFileSync(latest, 'utf8');
+            const password = process.env.MYTASKS_DATA_PASSWORD;
+            if (password && backupContent.startsWith(ENCRYPTION_PREFIX)) {
+              backupContent = decryptData(backupContent, password);
+            }
+            raw = JSON.parse(backupContent);
             fromBackup = true;
-            this.notice = 'Файл данных был повреждён. Данные восстановлены из резервной копии.';
+            this.notice = {
+              type: 'error',
+              message: 'Файл данных повреждён. Данные восстановлены из резервной копии.'
+            };
           } catch (_) {
             raw = null;
           }
         }
         if (!raw) {
-          this.notice = 'Файл данных был повреждён. Создан новый пустой список.';
+          this.notice = {
+            type: 'error',
+            message: 'Файл данных повреждён. Создан новый пустой список.'
+          };
         }
       }
     }
 
-    if (!raw) raw = defaultData(this.isPackaged);
+    if (!raw) {
+      raw = defaultData(this.isPackaged);
+    } else {
+      const sourceVersion = Number(raw && raw.version) || 1;
+      let preMigrationBackup = null;
+      if (sourceVersion < 2 && hadUsableFile && !fromBackup) {
+        try {
+          preMigrationBackup = this.backups.createBackup('pre-v2-migration');
+        } catch (_) {
+          // migration backup failure should not block migration attempt
+        }
+      }
+      raw = migrateData(raw, { isPackaged: this.isPackaged });
+      if (sourceVersion < 2 && hadUsableFile && !fromBackup) {
+        const backupName = preMigrationBackup ? path.basename(preMigrationBackup) : null;
+        this.notice = {
+          type: 'success',
+          message: backupName
+            ? `Данные обновлены до формата 2.0. Резервная копия перед миграцией: backups/${backupName}`
+            : 'Данные обновлены до формата 2.0.'
+        };
+      }
+    }
+
     this.data = normalizeData(raw, this.isPackaged);
 
     if (fileExists && !fromBackup && fs.existsSync(this.dataFile)) {
@@ -176,6 +346,10 @@ class Store extends EventEmitter {
   }
 
   /* ============ Tasks (делегирование) ============ */
+
+  restoreTask(task) {
+    return this.tasks.restoreTask(task);
+  }
 
   addTask(input = {}) {
     return this.tasks.addTask(input);
@@ -251,7 +425,15 @@ class Store extends EventEmitter {
     this.categories.deleteCategory(id);
   }
 
+  restoreCategory(category) {
+    return this.categories.restoreCategory(category);
+  }
+
   /* ============ Notes (делегирование) ============ */
+
+  restoreNote(note) {
+    return this.notes.restoreNote(note);
+  }
 
   getNotes(includeArchived = false) {
     return this.notes.getNotes(includeArchived);
@@ -326,7 +508,9 @@ class Store extends EventEmitter {
   }
 
   importFrom(filePath) {
-    return this.importExport.importFrom(filePath);
+    const result = this.importExport.importFrom(filePath);
+    this._bindServiceData();
+    return result;
   }
 
   /* ============ Backups (делегирование) ============ */
@@ -349,6 +533,66 @@ class Store extends EventEmitter {
 
   ensureDailyBackup() {
     return this.backups.ensureDailyBackup();
+  }
+
+  restoreBackup(filePath) {
+    if (!filePath || typeof filePath !== 'string')
+      throw new Error('Не указан файл резервной копии');
+    const resolved = path.resolve(filePath);
+    const backupDirResolved = path.resolve(this.backupDir);
+    if (!resolved.startsWith(backupDirResolved)) {
+      throw new Error('Можно восстановить только резервную копию из папки backups');
+    }
+    if (!fs.existsSync(resolved)) throw new Error('Файл резервной копии не найден');
+
+    let content = fs.readFileSync(resolved, 'utf8');
+    const password = process.env.MYTASKS_DATA_PASSWORD;
+    if (password && content.startsWith(ENCRYPTION_PREFIX)) {
+      content = decryptData(content, password);
+    }
+    const raw = JSON.parse(content);
+    const migrated = migrateData(raw, { isPackaged: this.isPackaged });
+    const normalized = normalizeData(migrated, this.isPackaged);
+
+    try {
+      this.createBackup('before-restore');
+    } catch (_) {
+      // ignore
+    }
+
+    this.replaceData(normalized);
+    this.save();
+
+    // restore attachments snapshot if present alongside backup json
+    try {
+      const attBackup = resolved.replace(/\.json$/i, '.attachments');
+      const attDir = path.join(this.dataDir, 'attachments');
+      if (fs.existsSync(attBackup)) {
+        if (fs.existsSync(attDir)) fs.rmSync(attDir, { recursive: true, force: true });
+        fs.mkdirSync(attDir, { recursive: true });
+        const copyDir = (src, dest) => {
+          for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+            const s = path.join(src, entry.name);
+            const d = path.join(dest, entry.name);
+            if (entry.isDirectory()) {
+              fs.mkdirSync(d, { recursive: true });
+              copyDir(s, d);
+            } else if (entry.isFile()) {
+              fs.copyFileSync(s, d);
+            }
+          }
+        };
+        copyDir(attBackup, attDir);
+      }
+    } catch (_) {
+      // attachments restore is best-effort
+    }
+
+    try {
+      if (this.attachments) this.attachments.gc({ save: true, silent: true });
+    } catch (_) {}
+
+    return { restored: path.basename(resolved) };
   }
 }
 

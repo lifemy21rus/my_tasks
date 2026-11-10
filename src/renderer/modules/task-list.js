@@ -251,6 +251,27 @@
         meta.appendChild(progress);
       }
 
+      if (Array.isArray(task.attachments) && task.attachments.length > 0) {
+        const att = document.createElement('span');
+        att.className = 'meta-attachments';
+        att.title = `Вложений: ${task.attachments.length}`;
+        att.textContent = `📎 ${task.attachments.length}`;
+        meta.appendChild(att);
+      }
+
+      if (Array.isArray(task.tags) && task.tags.length > 0) {
+        for (const tag of task.tags) {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'tag-chip';
+          chip.dataset.action = 'filter-tag';
+          chip.dataset.tag = String(tag);
+          chip.textContent = String(tag);
+          chip.title = `Фильтр по тегу: ${String(tag)}`;
+          meta.appendChild(chip);
+        }
+      }
+
       body.appendChild(meta);
 
       const actions = document.createElement('div');
@@ -264,6 +285,11 @@
 
       main.append(checkbox, body, actions);
       card.appendChild(main);
+
+      if (state.viewMode === 'list' && state.sort === 'manual') {
+        card.draggable = true;
+        card.dataset.draggableTask = '1';
+      }
 
       if (state.expanded.has(task.id)) {
         card.appendChild(renderSubtasksPanel(task));
@@ -308,6 +334,328 @@
       els.emptyText.textContent = 'Добавьте первую задачу — и она появится в этом списке.';
     }
 
+    function renderBoard(tasks) {
+      const columns = [
+        { id: 'todo', title: 'К выполнению', statuses: ['todo', 'inbox'] },
+        { id: 'in_progress', title: 'В работе', statuses: ['in_progress'] },
+        { id: 'done', title: 'Готово', statuses: ['done'] }
+      ];
+      const board = document.createElement('div');
+      board.className = 'board';
+
+      for (const col of columns) {
+        const colTasks = tasks.filter((t) =>
+          col.statuses.includes(t.status || (t.done ? 'done' : 'todo'))
+        );
+        colTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+        const colEl = document.createElement('section');
+        colEl.className = 'board-col';
+        colEl.dataset.status = col.id;
+
+        const head = document.createElement('div');
+        head.className = 'board-col-head';
+        const title = document.createElement('span');
+        title.className = 'board-col-title';
+        title.textContent = col.title;
+        const count = document.createElement('span');
+        count.className = 'board-col-count';
+        count.textContent = String(colTasks.length);
+        head.append(title, count);
+
+        const body = document.createElement('div');
+        body.className = 'board-col-body';
+        body.dataset.dropStatus = col.id;
+        if (colTasks.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'board-empty';
+          empty.textContent = 'Нет задач';
+          body.appendChild(empty);
+        } else {
+          for (const task of colTasks) {
+            const card = renderTaskCard(task);
+            card.classList.add('is-board');
+            card.draggable = true;
+            card.dataset.draggableTask = '1';
+            const move = document.createElement('div');
+            move.className = 'board-move';
+            if (col.id !== 'todo') {
+              const back = document.createElement('button');
+              back.type = 'button';
+              back.className = 'btn btn-ghost btn-sm';
+              back.dataset.action = 'move-status';
+              back.dataset.status = col.id === 'done' ? 'in_progress' : 'todo';
+              back.textContent = col.id === 'done' ? 'В работу' : 'К выполнению';
+              move.appendChild(back);
+            }
+            if (col.id !== 'done') {
+              const fwd = document.createElement('button');
+              fwd.type = 'button';
+              fwd.className = 'btn btn-ghost btn-sm';
+              fwd.dataset.action = 'move-status';
+              fwd.dataset.status = col.id === 'todo' ? 'in_progress' : 'done';
+              fwd.textContent = col.id === 'todo' ? 'В работу' : 'Готово';
+              move.appendChild(fwd);
+            }
+            if (move.childNodes.length) card.querySelector('.task-body').appendChild(move);
+            body.appendChild(card);
+          }
+        }
+        colEl.append(head, body);
+        board.appendChild(colEl);
+      }
+      return board;
+    }
+
+    function renderCalendar(tasks) {
+      const container = document.createElement('div');
+      container.className = 'calendar-view';
+      const mode = state.calendarMode || 'month';
+      const now = new Date();
+      const anchor = state.calendarAnchor ? new Date(state.calendarAnchor) : now;
+
+      function startOfWeek(d) {
+        const day = (d.getDay() + 6) % 7;
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate() - day);
+      }
+      function sameDay(a, b) {
+        return (
+          a.getFullYear() === b.getFullYear() &&
+          a.getMonth() === b.getMonth() &&
+          a.getDate() === b.getDate()
+        );
+      }
+      function ymd(d) {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      }
+      function tasksOnDate(dateStr) {
+        return tasks.filter((t) => {
+          if (!t.dueAt) return false;
+          const d = new Date(t.dueAt);
+          return !Number.isNaN(d.getTime()) && ymd(d) === dateStr;
+        });
+      }
+      function createTaskChip(task) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = `calendar-item${task.done ? ' is-done' : ''}`;
+        item.dataset.action = 'edit';
+        item.title = task.title;
+        item.textContent = task.title;
+        const wrap = document.createElement('div');
+        wrap.className = 'task-card';
+        wrap.dataset.id = task.id;
+        wrap.dataset.draggableTask = '1';
+        wrap.draggable = true;
+        wrap.style.padding = '0';
+        wrap.style.border = '0';
+        wrap.style.background = 'transparent';
+        wrap.appendChild(item);
+        return wrap;
+      }
+
+      const head = document.createElement('div');
+      head.className = 'calendar-head';
+
+      const modeSwitch = document.createElement('div');
+      modeSwitch.className = 'calendar-mode-switch';
+      [
+        { id: 'month', label: 'Месяц' },
+        { id: 'week', label: 'Неделя' },
+        { id: 'day', label: 'День' }
+      ].forEach((m) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `chip${mode === m.id ? ' is-active' : ''}`;
+        btn.dataset.action = 'calendar-mode';
+        btn.dataset.mode = m.id;
+        btn.textContent = m.label;
+        modeSwitch.appendChild(btn);
+      });
+
+      const nav = document.createElement('div');
+      nav.className = 'calendar-nav';
+      const prev = document.createElement('button');
+      prev.type = 'button';
+      prev.className = 'btn btn-ghost btn-sm';
+      prev.dataset.action = 'calendar-prev';
+      prev.textContent = '‹';
+      const todayBtn = document.createElement('button');
+      todayBtn.type = 'button';
+      todayBtn.className = 'btn btn-ghost btn-sm';
+      todayBtn.dataset.action = 'calendar-today';
+      todayBtn.textContent = 'Сегодня';
+      const next = document.createElement('button');
+      next.type = 'button';
+      next.className = 'btn btn-ghost btn-sm';
+      next.dataset.action = 'calendar-next';
+      next.textContent = '›';
+      nav.append(prev, todayBtn, next);
+
+      const title = document.createElement('div');
+      title.className = 'calendar-title';
+      head.append(title, modeSwitch, nav);
+      container.appendChild(head);
+
+      if (mode === 'week') {
+        const start = startOfWeek(anchor);
+        const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+        const fmt = (d) => d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+        title.textContent = `${fmt(start)} — ${fmt(end)} ${end.getFullYear()}`;
+        const grid = document.createElement('div');
+        grid.className = 'calendar-week-grid';
+        const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+        for (let i = 0; i < 7; i++) {
+          const dayDate = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+          const dateStr = ymd(dayDate);
+          const col = document.createElement('div');
+          col.className = `calendar-week-col${sameDay(dayDate, now) ? ' is-today' : ''}`;
+          col.dataset.dropDate = dateStr;
+          const h = document.createElement('div');
+          h.className = 'calendar-week-col-head';
+          h.textContent = `${weekdays[i]} ${dayDate.getDate()}`;
+          const body = document.createElement('div');
+          body.className = 'calendar-week-col-body';
+          body.dataset.dropDate = dateStr;
+          const list = tasksOnDate(dateStr).sort(
+            (a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt)
+          );
+          if (list.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'calendar-empty';
+            empty.textContent = '—';
+            body.appendChild(empty);
+          } else {
+            for (const task of list) body.appendChild(createTaskChip(task));
+          }
+          col.append(h, body);
+          grid.appendChild(col);
+        }
+        container.appendChild(grid);
+      } else if (mode === 'day') {
+        const dayDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+        title.textContent = dayDate.toLocaleDateString('ru-RU', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+        const dateStr = ymd(dayDate);
+        const list = tasksOnDate(dateStr).sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt));
+        const grid = document.createElement('div');
+        grid.className = 'calendar-day-grid';
+        const byHour = new Map();
+        const noTime = [];
+        for (const t of list) {
+          const d = new Date(t.dueAt);
+          const h = d.getHours();
+          const m = d.getMinutes();
+          if (h === 0 && m === 0 && !/\d{2}:\d{2}/.test(String(t.dueAt))) {
+            noTime.push(t);
+          } else {
+            if (!byHour.has(h)) byHour.set(h, []);
+            byHour.get(h).push(t);
+          }
+        }
+        if (noTime.length > 0) {
+          const slot = document.createElement('div');
+          slot.className = 'calendar-day-slot';
+          slot.dataset.dropDate = dateStr;
+          const label = document.createElement('div');
+          label.className = 'calendar-day-slot-label';
+          label.textContent = 'В течение дня';
+          const body = document.createElement('div');
+          body.className = 'calendar-day-slot-body';
+          body.dataset.dropDate = dateStr;
+          for (const task of noTime) body.appendChild(createTaskChip(task));
+          slot.append(label, body);
+          grid.appendChild(slot);
+        }
+        for (let h = 0; h < 24; h++) {
+          const slot = document.createElement('div');
+          slot.className = 'calendar-day-slot';
+          slot.dataset.dropDate = dateStr;
+          slot.dataset.dropHour = String(h);
+          const label = document.createElement('div');
+          label.className = 'calendar-day-slot-label';
+          label.textContent = `${String(h).padStart(2, '0')}:00`;
+          const body = document.createElement('div');
+          body.className = 'calendar-day-slot-body';
+          body.dataset.dropDate = dateStr;
+          body.dataset.dropHour = String(h);
+          for (const task of byHour.get(h) || []) body.appendChild(createTaskChip(task));
+          slot.append(label, body);
+          grid.appendChild(slot);
+        }
+        container.appendChild(grid);
+      } else {
+        // month
+        const viewDate = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+        const year = viewDate.getFullYear();
+        const month = viewDate.getMonth();
+        const first = new Date(year, month, 1);
+        const startDay = (first.getDay() + 6) % 7; // Mon=0
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const monthName = first.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
+        title.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+        const grid = document.createElement('div');
+        grid.className = 'calendar-grid';
+        const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+        for (const w of weekdays) {
+          const c = document.createElement('div');
+          c.className = 'calendar-weekday';
+          c.textContent = w;
+          grid.appendChild(c);
+        }
+        for (let i = 0; i < startDay; i++) {
+          const c = document.createElement('div');
+          c.className = 'calendar-cell is-empty';
+          grid.appendChild(c);
+        }
+        const byDay = new Map();
+        for (const task of tasks) {
+          if (!task.dueAt) continue;
+          const d = new Date(task.dueAt);
+          if (d.getFullYear() !== year || d.getMonth() !== month) continue;
+          const day = d.getDate();
+          if (!byDay.has(day)) byDay.set(day, []);
+          byDay.get(day).push(task);
+        }
+        for (let day = 1; day <= daysInMonth; day++) {
+          const cell = document.createElement('div');
+          cell.className = 'calendar-cell';
+          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          cell.dataset.dropDate = dateStr;
+          const dayDate = new Date(year, month, day);
+          if (sameDay(dayDate, now)) cell.classList.add('is-today');
+          const num = document.createElement('div');
+          num.className = 'calendar-daynum';
+          num.textContent = String(day);
+          cell.appendChild(num);
+          const list = (byDay.get(day) || []).sort(
+            (a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt)
+          );
+          for (const task of list.slice(0, 4)) cell.appendChild(createTaskChip(task));
+          if (list.length > 4) {
+            const more = document.createElement('div');
+            more.className = 'calendar-more';
+            more.textContent = `+${list.length - 4}`;
+            cell.appendChild(more);
+          }
+          grid.appendChild(cell);
+        }
+        container.appendChild(grid);
+      }
+
+      if (tasks.every((t) => !t.dueAt)) {
+        const hint = document.createElement('div');
+        hint.className = 'field-hint';
+        hint.textContent = 'У задач в этом списке нет сроков для отображения в календаре.';
+        container.appendChild(hint);
+      }
+      return container;
+    }
+
     function renderTaskList() {
       const tasks = getVisibleTasks(state, U);
       els.taskList.textContent = '';
@@ -323,6 +671,8 @@
       }
 
       els.taskList.hidden = false;
+      els.taskList.classList.toggle('is-board-mode', state.viewMode === 'board');
+      els.taskList.classList.toggle('is-calendar-mode', state.viewMode === 'calendar');
       els.emptyAddBtn.textContent = 'Добавить задачу';
 
       const tasksOnlyEmpty =
@@ -337,6 +687,15 @@
       }
 
       els.emptyState.hidden = true;
+      if (state.viewMode === 'board') {
+        els.taskList.appendChild(renderBoard(tasks));
+        return;
+      }
+      if (state.viewMode === 'calendar') {
+        els.taskList.appendChild(renderCalendar(tasks));
+        return;
+      }
+
       const fragment = document.createDocumentFragment();
       for (const task of tasks) fragment.appendChild(renderTaskCard(task));
       els.taskList.appendChild(fragment);
@@ -476,6 +835,49 @@
         api
       } = handlers;
 
+      function taskStatusOf(task) {
+        return task.status || (task.done ? 'done' : 'todo');
+      }
+
+      async function moveTaskToColumn(taskId, targetStatus, beforeTaskId) {
+        const all = (state.data.tasks || []).slice();
+        const task = all.find((t) => t.id === taskId);
+        if (!task) return;
+        const statusSet = targetStatus === 'todo' ? ['todo', 'inbox'] : [targetStatus];
+        const colTasks = all
+          .filter((t) => statusSet.includes(taskStatusOf(t)) && t.id !== taskId)
+          .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+        let insertIndex = colTasks.length;
+        if (beforeTaskId) {
+          const idx = colTasks.findIndex((t) => t.id === beforeTaskId);
+          if (idx >= 0) insertIndex = idx;
+        }
+        colTasks.splice(insertIndex, 0, task);
+
+        const base = 1000;
+        const primary = {
+          status: targetStatus,
+          order: (insertIndex + 1) * base,
+          done: targetStatus === 'done'
+        };
+        if (targetStatus === 'done') {
+          await invoke(api.toggleTask(taskId, true));
+          // ensure order too
+          await invoke(api.updateTask(taskId, { order: primary.order }));
+        } else {
+          await invoke(api.updateTask(taskId, primary));
+        }
+        // reindex others in column
+        const ops = [];
+        for (let i = 0; i < colTasks.length; i++) {
+          const t = colTasks[i];
+          if (t.id === taskId) continue;
+          const newOrder = (i + 1) * base;
+          if (Number(t.order) !== newOrder) ops.push(api.updateTask(t.id, { order: newOrder }));
+        }
+        if (ops.length) await Promise.all(ops);
+      }
+
       els.taskList.addEventListener('change', (event) => {
         const target = event.target;
         if (target.dataset.action === 'select-task') {
@@ -499,18 +901,225 @@
         }
       });
 
-      els.taskList.addEventListener('click', (event) => {
-        const card = event.target.closest('.task-card');
+      els.taskList.addEventListener('dragstart', (event) => {
+        const card = event.target.closest('.task-card[data-draggable-task="1"]');
         if (!card) return;
+        state.dragTaskId = card.dataset.id;
+        event.dataTransfer.effectAllowed = 'move';
+        try {
+          event.dataTransfer.setData('text/plain', card.dataset.id);
+        } catch (_) {}
+        card.classList.add('is-dragging');
+      });
 
+      els.taskList.addEventListener('dragend', (event) => {
+        const card = event.target.closest('.task-card');
+        if (card) card.classList.remove('is-dragging');
+        state.dragTaskId = null;
+        els.taskList
+          .querySelectorAll('.board-col-body.is-drag-over')
+          .forEach((el) => el.classList.remove('is-drag-over'));
+      });
+
+      els.taskList.addEventListener('dragover', (event) => {
+        const body = event.target.closest('.board-col-body[data-drop-status]');
+        const cell = event.target.closest(
+          '.calendar-cell[data-drop-date], .calendar-week-col-body[data-drop-date], .calendar-day-slot-body[data-drop-date]'
+        );
+        const target = body || cell;
+        if (target) {
+          event.preventDefault();
+          target.classList.add('is-drag-over');
+          event.dataTransfer.dropEffect = 'move';
+          return;
+        }
+        if (state.viewMode === 'list' && state.sort === 'manual' && state.dragTaskId) {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'move';
+        }
+      });
+
+      els.taskList.addEventListener('dragleave', (event) => {
+        const target = event.target.closest(
+          '.board-col-body[data-drop-status], .calendar-cell[data-drop-date], .calendar-week-col-body[data-drop-date], .calendar-day-slot-body[data-drop-date]'
+        );
+        if (!target) return;
+        if (!target.contains(event.relatedTarget)) target.classList.remove('is-drag-over');
+      });
+
+      els.taskList.addEventListener('drop', async (event) => {
+        const body = event.target.closest('.board-col-body[data-drop-status]');
+        const cell = event.target.closest(
+          '.calendar-cell[data-drop-date], .calendar-week-col-body[data-drop-date], .calendar-day-slot-body[data-drop-date]'
+        );
+        const taskId =
+          state.dragTaskId || (event.dataTransfer ? event.dataTransfer.getData('text/plain') : '');
+
+        // list manual reorder
+        if (!body && !cell && state.viewMode === 'list' && state.sort === 'manual' && taskId) {
+          const inList = event.target.closest('#task-list') || event.target === els.taskList;
+          if (inList) {
+            event.preventDefault();
+            const cards = Array.from(
+              els.taskList.querySelectorAll(':scope > .task-card[data-draggable-task="1"]')
+            ).filter((c) => c.dataset.id !== taskId);
+            let beforeTaskId = null;
+            const y = event.clientY;
+            for (const c of cards) {
+              const rect = c.getBoundingClientRect();
+              if (y < rect.top + rect.height / 2) {
+                beforeTaskId = c.dataset.id;
+                break;
+              }
+            }
+            const visible = getVisibleTasks(state, U).filter((t) => t.id !== taskId);
+            let insertIndex = visible.length;
+            if (beforeTaskId) {
+              const idx = visible.findIndex((t) => t.id === beforeTaskId);
+              if (idx >= 0) insertIndex = idx;
+            }
+            const moved = (state.data.tasks || []).find((t) => t.id === taskId);
+            if (moved) {
+              visible.splice(insertIndex, 0, moved);
+              const base = 1000;
+              const ops = [];
+              for (let i = 0; i < visible.length; i++) {
+                const t = visible[i];
+                const newOrder = (i + 1) * base;
+                if (Number(t.order) !== newOrder)
+                  ops.push(api.updateTask(t.id, { order: newOrder }));
+              }
+              state.dragTaskId = null;
+              if (ops.length) await Promise.all(ops);
+              renderTaskList();
+            }
+            return;
+          }
+        }
+
+        if (!body && !cell) return;
+        event.preventDefault();
+        (body || cell).classList.remove('is-drag-over');
+        if (!taskId) return;
+
+        if (body) {
+          const status = body.dataset.dropStatus;
+          if (!status) return;
+          let beforeTaskId = null;
+          const cards = Array.from(
+            body.querySelectorAll('.task-card[data-draggable-task="1"]')
+          ).filter((c) => c.dataset.id !== taskId);
+          const y = event.clientY;
+          for (const c of cards) {
+            const rect = c.getBoundingClientRect();
+            if (y < rect.top + rect.height / 2) {
+              beforeTaskId = c.dataset.id;
+              break;
+            }
+          }
+          state.dragTaskId = null;
+          await moveTaskToColumn(taskId, status, beforeTaskId);
+          return;
+        }
+
+        if (cell) {
+          const dateStr = cell.dataset.dropDate;
+          if (!dateStr) return;
+          const task = (state.data.tasks || []).find((t) => t.id === taskId);
+          let time = '18:00';
+          if (Object.prototype.hasOwnProperty.call(cell.dataset, 'dropHour')) {
+            const hh = Number(cell.dataset.dropHour);
+            if (Number.isFinite(hh) && hh >= 0 && hh <= 23) {
+              time = `${String(hh).padStart(2, '0')}:00`;
+            }
+          } else if (task && task.dueAt) {
+            try {
+              const d = new Date(task.dueAt);
+              if (!Number.isNaN(d.getTime())) {
+                time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+              }
+            } catch (_) {}
+          }
+          const dueAt = U.combineDateTime ? U.combineDateTime(dateStr, time) : null;
+          state.dragTaskId = null;
+          if (dueAt) await invoke(api.updateTask(taskId, { dueAt }), 'Срок обновлён');
+        }
+      });
+
+      els.taskList.addEventListener('click', (event) => {
         const button = event.target.closest('[data-action]');
         if (button && button.tagName !== 'INPUT') {
-          const taskId = card.dataset.id;
           const action = button.dataset.action;
+          if (action === 'calendar-mode') {
+            state.calendarMode = button.dataset.mode || 'month';
+            if (!state.calendarAnchor) state.calendarAnchor = Date.now();
+            renderTaskList();
+            return;
+          }
+          if (
+            action === 'calendar-prev' ||
+            action === 'calendar-next' ||
+            action === 'calendar-today'
+          ) {
+            const mode = state.calendarMode || 'month';
+            const delta = action === 'calendar-prev' ? -1 : action === 'calendar-next' ? 1 : 0;
+            const base = state.calendarAnchor ? new Date(state.calendarAnchor) : new Date();
+            if (action === 'calendar-today') {
+              state.calendarAnchor = Date.now();
+              state.calendarMonthOffset = 0;
+            } else if (mode === 'week') {
+              state.calendarAnchor = new Date(
+                base.getFullYear(),
+                base.getMonth(),
+                base.getDate() + delta * 7
+              ).getTime();
+            } else if (mode === 'day') {
+              state.calendarAnchor = new Date(
+                base.getFullYear(),
+                base.getMonth(),
+                base.getDate() + delta
+              ).getTime();
+            } else {
+              state.calendarAnchor = new Date(
+                base.getFullYear(),
+                base.getMonth() + delta,
+                1
+              ).getTime();
+              state.calendarMonthOffset = (Number(state.calendarMonthOffset) || 0) + delta;
+            }
+            renderTaskList();
+            return;
+          }
+          if (action === 'filter-tag') {
+            const tag = button.dataset.tag || '';
+            if (tag && handlers.onFilterTag) handlers.onFilterTag(tag, 'task');
+            else if (tag) {
+              state.tagFilter = tag;
+              renderTaskList();
+            }
+            return;
+          }
+
+          const card = event.target.closest('.task-card');
+          if (!card) return;
+          const taskId = card.dataset.id;
           if (action === 'edit') openTaskModal(taskId);
           else if (action === 'delete') deleteTaskWithConfirm(taskId);
           else if (action === 'snooze') openSnoozeMenu(button, taskId);
-          else if (action === 'toggle-expand') {
+          else if (action === 'move-status') {
+            const status = button.dataset.status;
+            if (status === 'done') {
+              invoke(api.toggleTask(taskId, true), 'Задача выполнена');
+            } else if (status) {
+              const maxOrder = (state.data.tasks || [])
+                .filter((t) => (t.status || (t.done ? 'done' : 'todo')) === status)
+                .reduce((m, t) => Math.max(m, Number(t.order) || 0), 0);
+              invoke(
+                api.updateTask(taskId, { status, done: false, order: maxOrder + 1 }),
+                'Статус обновлён'
+              );
+            }
+          } else if (action === 'toggle-expand') {
             if (state.expanded.has(taskId)) state.expanded.delete(taskId);
             else state.expanded.add(taskId);
             renderTaskList();
@@ -534,6 +1143,20 @@
           return;
         }
 
+        const cell = event.target.closest('[data-drop-date]');
+        if (cell && state.viewMode === 'calendar' && cell.dataset.dropDate) {
+          const isTaskClick =
+            event.target.closest('.calendar-item') ||
+            event.target.closest('.task-card[data-draggable-task]') ||
+            event.target.closest('button[data-action="edit"]');
+          if (!isTaskClick) {
+            openTaskModal(null, { preset: { date: cell.dataset.dropDate } });
+            return;
+          }
+        }
+
+        const card = event.target.closest('.task-card');
+        if (!card) return;
         if (event.target.closest('.task-check')) return;
         if (event.target.closest('[data-action="toggle-subtask"]')) return;
         if (event.target.closest('.subtask-row')) return;

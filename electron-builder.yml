@@ -47,4 +47,4 @@ publish:
   # Для приватного репозитория задайте переменную окружения GITHUB_TOKEN
   # с персональным токеном доступа (scope: repo) перед публикацией:
   #   $env:GH_TOKEN = "ghp_..."
-  #   npx electron-builder publish --files dist\MyTasks-Setup-1.0.2.exe dist\MyTasks-1.0.2-portable.exe -p always
+  #   npx electron-builder publish --files dist\MyTasks-Setup-2.0.0.exe dist\MyTasks-2.0.0-portable.exe -p always

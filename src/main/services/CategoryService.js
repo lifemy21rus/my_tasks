@@ -68,6 +68,30 @@ class CategoryService {
     }
     this.save();
   }
+
+  restoreCategory(categoryInput) {
+    const { uid, normalizeCategoryName, normalizeColor, clone } = this.normalizers;
+    if (!categoryInput || typeof categoryInput !== 'object')
+      throw new Error('Не удалось восстановить категорию');
+    const id = typeof categoryInput.id === 'string' && categoryInput.id ? categoryInput.id : uid();
+    if (this.data.categories.some((item) => item.id === id)) {
+      throw new Error('Категория уже существует');
+    }
+    const name = normalizeCategoryName(categoryInput.name);
+    if (!name) throw new Error('Введите название категории');
+    const duplicate = this.data.categories.some(
+      (item) => item.name.toLowerCase() === name.toLowerCase()
+    );
+    if (duplicate) throw new Error('Такая категория уже есть');
+    const category = {
+      id,
+      name,
+      color: normalizeColor(categoryInput.color)
+    };
+    this.data.categories.push(category);
+    this.save();
+    return clone(category);
+  }
 }
 
 module.exports = { CategoryService };

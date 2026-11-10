@@ -360,6 +360,14 @@ async function runMainSmoke({ mainWindow, outputPath, app, setQuitting, showWind
         await wait(100);
         report.backdropHidden = document.getElementById('modal-backdrop').hidden;
 
+        document.querySelector('.nav-item[data-view="all"]').click();
+        await wait(150);
+        report.viewModeChips = q('.chip[data-view-mode]').map((c) => c.dataset.viewMode);
+        report.statusFilterPresent = Boolean(document.getElementById('status-filter'));
+        report.tagFilterPresent = Boolean(document.getElementById('tag-filter'));
+        report.attachmentsFilterPresent = Boolean(document.getElementById('attachments-filter'));
+        report.smartListsSectionPresent = Boolean(document.getElementById('smart-lists-section'));
+
         document.querySelector('.nav-item[data-view="notes"]').click();
         await wait(200);
         report.notesView = document.getElementById('view-title').textContent === 'Заметки';
