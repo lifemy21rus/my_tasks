@@ -27,6 +27,20 @@ function writeReport(outputPath, payload) {
   }
 }
 
+// Снимок окна для визуальной проверки интерфейса (MYTASKS_SCREENSHOT).
+async function captureWindow(win, outputPath) {
+  if (!win || !outputPath) return null;
+  try {
+    const image = await win.webContents.capturePage();
+    fs.writeFileSync(outputPath, image.toPNG());
+    console.log(`Снимок окна сохранён: ${outputPath}`);
+    return outputPath;
+  } catch (err) {
+    console.error('Не удалось сделать снимок окна:', err);
+    return null;
+  }
+}
+
 // Авто-проверка окна мини-панели. Запускается, когда переменная MYTASKS_MINI_SMOKE задана.
 // Приложение само собирает отчёт и завершается.
 async function runMiniSmoke({
@@ -429,6 +443,8 @@ async function runMainSmoke({ mainWindow, outputPath, app, setQuitting, showWind
     } catch (err) {
       error = err && err.stack ? err.stack : String(err);
     }
+
+    await captureWindow(mainWindow, process.env.MYTASKS_SCREENSHOT);
 
     const payload = { ok: !error, error, logs, result };
     writeReport(outputPath, payload);

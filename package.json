@@ -1,7 +1,7 @@
 {
   "name": "my-tasks",
   "productName": "Планировщик",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Локальный планировщик задач для Windows",
   "main": "src/main/main.js",
   "author": "MyTasks",
@@ -16,6 +16,7 @@
     "fmt": "prettier --write \"src/**/*.{js,html,css}\" \"tests/**/*.js\" \"scripts/**/*.js\"",
     "fmt:check": "prettier --check \"src/**/*.{js,html,css}\" \"tests/**/*.js\" \"scripts/**/*.js\"",
     "icons": "node scripts/generate-icons.js",
+    "shots": "node scripts/capture-screenshots.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --win",
     "e2e": "playwright test"

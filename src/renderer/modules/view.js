@@ -29,6 +29,13 @@
       }
       if (els.dueFromInput) els.dueFromInput.value = state.dueFrom || '';
       if (els.dueToInput) els.dueToInput.value = state.dueTo || '';
+      const hasRange = Boolean(state.dueFrom || state.dueTo);
+      const open = Boolean(state.dueRangeOpen) || hasRange;
+      if (els.dueRange) els.dueRange.hidden = !open;
+      if (els.dueRangeToggle) {
+        els.dueRangeToggle.setAttribute('aria-expanded', String(open));
+        els.dueRangeToggle.classList.toggle('is-active', open);
+      }
     }
 
     function syncTagFilter() {

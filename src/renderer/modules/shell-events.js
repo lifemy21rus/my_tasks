@@ -74,10 +74,20 @@
       state.activeSmartListId = null;
       renderAll();
     });
+    if (els.dueRangeToggle && els.dueRange) {
+      els.dueRangeToggle.addEventListener('click', () => {
+        state.dueRangeOpen = els.dueRange.hidden;
+        els.dueRange.hidden = !state.dueRangeOpen;
+        els.dueRangeToggle.setAttribute('aria-expanded', String(state.dueRangeOpen));
+        els.dueRangeToggle.classList.toggle('is-active', state.dueRangeOpen);
+        if (state.dueRangeOpen && els.dueFromInput) els.dueFromInput.focus();
+      });
+    }
     if (els.dueFromInput) {
       els.dueFromInput.addEventListener('change', () => {
         state.dueFrom = els.dueFromInput.value || '';
         state.activeSmartListId = null;
+        state.dueRangeOpen = true;
         renderAll();
       });
     }
@@ -85,6 +95,7 @@
       els.dueToInput.addEventListener('change', () => {
         state.dueTo = els.dueToInput.value || '';
         state.activeSmartListId = null;
+        state.dueRangeOpen = true;
         renderAll();
       });
     }

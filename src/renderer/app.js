@@ -18,6 +18,7 @@
     dueFilter: '',
     dueFrom: '',
     dueTo: '',
+    dueRangeOpen: false,
     expanded: new Set(),
     expandedNestedSubtasks: new Set(),
     draft: null,

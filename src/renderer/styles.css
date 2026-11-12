@@ -167,6 +167,8 @@ button {
   padding: 12px 8px 8px;
   gap: 10px;
   position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .brand {
@@ -284,6 +286,11 @@ button {
   gap: 4px;
 }
 
+/* Секции сайдбара не сжимаются: при нехватке места прокручивается весь сайдбар. */
+.sidebar > * {
+  flex: none;
+}
+
 .sidebar-section-head {
   display: flex;
   align-items: center;
@@ -388,12 +395,12 @@ button {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-top: 6px;
+  margin-top: auto;
+  padding-top: 10px;
   border-top: 1px solid var(--border);
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  right: 12px;
+  position: sticky;
+  bottom: 0;
+  background: var(--panel);
 }
 
 .hotkey-hint {
@@ -579,6 +586,11 @@ button {
   gap: 8px;
   max-width: 940px;
   margin: 0 auto;
+}
+
+/* Календарь использует всю доступную ширину окна. */
+.task-list.is-calendar-mode {
+  max-width: none;
 }
 
 .note-list {
@@ -2519,6 +2531,29 @@ html[data-theme='dark'] .recurrence-badge {
 }
 .task-card.is-board {
   margin: 0;
+  padding-left: 30px;
+}
+/* Карточка канбана: описание скрыто, действия вынесены из потока, чтобы
+   не отнимать ширину у заголовка. */
+.task-card.is-board .task-main {
+  padding: 10px 12px;
+  gap: 9px;
+}
+.task-card.is-board .task-desc {
+  display: none;
+}
+.task-card.is-board .task-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  opacity: 0;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+.task-card.is-board:hover .task-actions,
+.task-card.is-board:focus-within .task-actions {
+  opacity: 1;
 }
 .board-move {
   display: flex;
@@ -2610,7 +2645,7 @@ html[data-theme='dark'] .recurrence-badge {
 }
 .calendar-week-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(120px, 1fr));
+  grid-template-columns: repeat(7, minmax(92px, 1fr));
   gap: 6px;
 }
 .calendar-week-col {
@@ -2810,14 +2845,51 @@ html[data-theme='dark'] .recurrence-badge {
 .due-range {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 0;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel-soft);
+  overflow: hidden;
 }
 .due-range-input {
   width: 100%;
   min-width: 0;
-  font-size: 12px;
-  padding: 8px 10px;
+  font-size: 11.5px;
+  line-height: 1.2;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-soft);
+  outline: none;
+  transition:
+    background 110ms ease,
+    color 110ms ease;
+}
+.due-range-input + .due-range-input {
+  border-left: 1px solid var(--border);
+}
+.due-range-input:hover {
+  color: var(--text);
+}
+.due-range-input:focus {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+.due-range-input::-webkit-datetime-edit {
+  padding: 0;
+}
+.due-range-input::-webkit-calendar-picker-indicator {
+  width: 13px;
+  height: 13px;
+  padding: 0;
+  opacity: 0.45;
+  cursor: pointer;
+}
+.due-range-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.95;
 }
 
 button.tag-chip {

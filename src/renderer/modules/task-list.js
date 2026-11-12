@@ -166,16 +166,15 @@
       title.textContent = task.title;
       titleRow.appendChild(title);
 
+      let priorityFlag = null;
       if (task.priority === 'high') {
-        const flag = document.createElement('span');
-        flag.className = 'priority-flag high';
-        flag.textContent = 'Важно';
-        titleRow.appendChild(flag);
+        priorityFlag = document.createElement('span');
+        priorityFlag.className = 'priority-flag high';
+        priorityFlag.textContent = 'Важно';
       } else if (task.priority === 'low') {
-        const flag = document.createElement('span');
-        flag.className = 'priority-flag low';
-        flag.textContent = 'Не срочно';
-        titleRow.appendChild(flag);
+        priorityFlag = document.createElement('span');
+        priorityFlag.className = 'priority-flag low';
+        priorityFlag.textContent = 'Не срочно';
       }
 
       if (task.color) {
@@ -273,6 +272,13 @@
       }
 
       body.appendChild(meta);
+
+      // В канбане колонка узкая: метку приоритета переносим в мета-строку,
+      // чтобы заголовок задачи не сжимался до одного символа.
+      if (priorityFlag) {
+        if (state.viewMode === 'board') meta.appendChild(priorityFlag);
+        else titleRow.appendChild(priorityFlag);
+      }
 
       const actions = document.createElement('div');
       actions.className = 'task-actions';

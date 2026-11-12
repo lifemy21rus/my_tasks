@@ -158,6 +158,8 @@
       dueFilterSelect: $('due-filter'),
       dueFromInput: $('due-from'),
       dueToInput: $('due-to'),
+      dueRange: $('due-range'),
+      dueRangeToggle: $('due-range-toggle'),
       tagFilter: $('tag-filter'),
       tagFilterSection: $('tag-filter-section'),
       attachmentsFilter: $('attachments-filter'),

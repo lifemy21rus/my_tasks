@@ -77,6 +77,28 @@
         <div class="sidebar-section">
           <div class="sidebar-section-head">
             <span>Сроки</span>
+            <button
+              class="icon-btn small"
+              id="due-range-toggle"
+              type="button"
+              title="Свой диапазон дат"
+              aria-label="Свой диапазон дат"
+              aria-expanded="false"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="15"
+                height="15"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.9"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="5" width="18" height="16" rx="3" />
+                <path d="M8 3v4M16 3v4M3 10h18" />
+              </svg>
+            </button>
           </div>
           <select class="due-filter-select" id="due-filter">
             <option value="">Все по сроку</option>
@@ -88,18 +110,20 @@
             <option value="overdue">Просроченные</option>
             <option value="soon">Ближайшие 7 дней</option>
           </select>
-          <div class="due-range">
+          <div class="due-range" id="due-range" hidden>
             <input
-              class="field-input due-range-input"
+              class="due-range-input"
               id="due-from"
               type="date"
               aria-label="Срок с"
+              title="С этой даты"
             />
             <input
-              class="field-input due-range-input"
+              class="due-range-input"
               id="due-to"
               type="date"
               aria-label="Срок по"
+              title="По эту дату"
             />
           </div>
         </div>

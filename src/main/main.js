@@ -13,6 +13,7 @@ const autostart = require('./autostart');
 const { registerIpc } = require('./ipc');
 const { MiniPanel } = require('./mini-window');
 const { runMainSmoke, runMiniSmoke } = require('./smoke-test');
+const { runScreenshotSession } = require('./screenshot-session');
 
 app.setAppUserModelId('com.mytasks.app');
 
@@ -282,7 +283,10 @@ function createWindow() {
   const settings = store ? store.getSettings() : { startMinimized: true };
   const shouldHide = settings.startMinimized || process.argv.includes('--hidden');
   const testMode =
-    process.env.MYTASKS_SCREENSHOT || process.env.MYTASKS_SMOKE || process.env.MYTASKS_MINI_SMOKE;
+    process.env.MYTASKS_SCREENSHOT ||
+    process.env.MYTASKS_SMOKE ||
+    process.env.MYTASKS_MINI_SMOKE ||
+    process.env.MYTASKS_SHOTS_DIR;
 
   if (shouldHide && !testMode) {
     mainWindow.once('ready-to-show', () => {
@@ -292,6 +296,18 @@ function createWindow() {
     mainWindow.once('ready-to-show', () => {
       showWindow();
       if (settings.miniPanelAtStart) showMini();
+    });
+  }
+
+  if (process.env.MYTASKS_SHOTS_DIR) {
+    runScreenshotSession({
+      mainWindow,
+      outputDir: process.env.MYTASKS_SHOTS_DIR,
+      app,
+      setQuitting: (value) => {
+        isQuitting = value;
+      },
+      showWindow
     });
   }
 

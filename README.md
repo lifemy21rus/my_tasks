@@ -83,15 +83,23 @@
 
 ## Скриншоты
 
-Скриншоты интерфейса добавляются в папку `docs/screenshots/`:
+Актуальные снимки интерфейса 2.0 лежат в `docs/screenshots/` (светлая и тёмная темы):
 
 ```markdown
-![Основное окно](docs/screenshots/main.png)
-![Мини-панель](docs/screenshots/mini.png)
-![Настройки](docs/screenshots/settings.png)
+![Список задач](docs/screenshots/01-list.png)
+![Канбан](docs/screenshots/02-board.png)
+![Календарь — неделя](docs/screenshots/04-calendar-week.png)
+![Заметки](docs/screenshots/06-notes.png)
+![Настройки](docs/screenshots/08-settings.png)
 ```
 
-> Скриншоты рекомендуется обновить после внедрения интерфейса 2.0 (виды, теги, вложения, статистика).
+Переснять набор автоматически (демо-профиль, обе темы):
+
+```bash
+npm run shots
+```
+
+Состав снимков и порядок файлов — в [`docs/screenshots/README.md`](docs/screenshots/README.md).
 
 
 ## Горячие клавиши
