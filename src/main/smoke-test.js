@@ -382,6 +382,31 @@ async function runMainSmoke({ mainWindow, outputPath, app, setQuitting, showWind
         report.attachmentsFilterPresent = Boolean(document.getElementById('attachments-filter'));
         report.smartListsSectionPresent = Boolean(document.getElementById('smart-lists-section'));
 
+        // Сохранение текущего фильтра как списка (кнопка "+" в разделе "Списки")
+        const smartListName = 'Список из smoke-теста';
+        document.getElementById('save-smart-list-btn').click();
+        await wait(250);
+        report.smartListPromptVisible = !document.getElementById('prompt-modal').hidden;
+        document.getElementById('prompt-input').value = smartListName;
+        document.getElementById('prompt-ok').click();
+        await wait(700);
+        const afterSmartList = await window.api.getState();
+        report.smartListSaved = Boolean(afterSmartList.ok
+          && afterSmartList.data.smartLists.some((list) => list.name === smartListName));
+        report.smartListRendered = Array.from(
+          document.querySelectorAll('#smart-list-list .category-name')
+        ).some((node) => node.textContent === smartListName);
+        const smartListToRemove = afterSmartList.ok
+          ? afterSmartList.data.smartLists.filter((list) => list.name === smartListName)
+          : [];
+        for (const list of smartListToRemove) {
+          await window.api.deleteSmartList(list.id);
+        }
+        await wait(200);
+        report.smartListRemoved = !(await window.api.getState()).data.smartLists.some(
+          (list) => list.name === smartListName
+        );
+
         document.querySelector('.nav-item[data-view="notes"]').click();
         await wait(200);
         report.notesView = document.getElementById('view-title').textContent === 'Заметки';

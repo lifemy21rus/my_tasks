@@ -89,6 +89,31 @@ class AttachmentService {
     return p;
   }
 
+  // Проставляет владельца вложения (задачу/заметку) для файлов, прикреплённых
+  // в черновике до сохранения сущности.
+  link(ids, options = {}) {
+    const data = this._data();
+    if (!Array.isArray(ids) || ids.length === 0) return;
+    let changed = false;
+    for (const id of ids) {
+      const record = (data.attachments || []).find((a) => a.id === id);
+      if (!record) continue;
+      if (options.taskId) {
+        if (record.taskId !== options.taskId) {
+          record.taskId = options.taskId;
+          changed = true;
+        }
+      }
+      if (options.noteId) {
+        if (record.noteId !== options.noteId) {
+          record.noteId = options.noteId;
+          changed = true;
+        }
+      }
+    }
+    if (changed) this.store.save({ silent: true });
+  }
+
   // exposed via store/ipc if needed (gc already implemented)
 
   deleteAttachment(id) {
@@ -132,6 +157,18 @@ class AttachmentService {
       return p && fs.existsSync(p);
     });
     if (data.attachments.length !== before) changed = true;
+
+    // drop metadata not linked to any task/note (например, несохранённые черновики)
+    const referenced = new Set();
+    for (const task of data.tasks || []) {
+      for (const id of task.attachments || []) referenced.add(id);
+    }
+    for (const note of data.notes || []) {
+      for (const id of note.attachments || []) referenced.add(id);
+    }
+    const beforeLinked = data.attachments.length;
+    data.attachments = data.attachments.filter((rec) => referenced.has(rec.id));
+    if (data.attachments.length !== beforeLinked) changed = true;
 
     const validIds = new Set(data.attachments.map((a) => a.id));
     for (const task of data.tasks || []) {

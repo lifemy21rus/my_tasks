@@ -37,6 +37,13 @@
       body.className = 'note-body';
       body.title = 'Редактировать заметку';
       body.addEventListener('click', (event) => {
+        const attBtn = event.target.closest('[data-action="open-attachment"]');
+        if (attBtn) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (ctx.onOpenAttachment) ctx.onOpenAttachment(attBtn.dataset.id || '');
+          return;
+        }
         const tagBtn = event.target.closest('[data-action="filter-tag"]');
         if (tagBtn) {
           event.preventDefault();
@@ -66,11 +73,28 @@
         const metaRow = document.createElement('span');
         metaRow.className = 'note-card-tags';
         if (Array.isArray(note.attachments) && note.attachments.length > 0) {
-          const att = document.createElement('span');
-          att.className = 'meta-attachments';
-          att.title = `Вложений: ${note.attachments.length}`;
-          att.textContent = `📎 ${note.attachments.length}`;
-          metaRow.appendChild(att);
+          const items = window.AppAttachments.collectAttachments(state, note.attachments);
+          if (items.length === 0) {
+            const att = document.createElement('span');
+            att.className = 'meta-attachments';
+            att.title = `Вложений: ${note.attachments.length}`;
+            att.textContent = `📎 ${note.attachments.length}`;
+            metaRow.appendChild(att);
+          } else {
+            const [first, ...rest] = items;
+            metaRow.appendChild(
+              window.AppAttachments.createLink(first, {
+                label: `📎 ${first.name || first.id}`
+              })
+            );
+            if (rest.length > 0) {
+              const more = document.createElement('span');
+              more.className = 'meta-attachments';
+              more.title = rest.map((item) => item.name || item.id).join('\n');
+              more.textContent = `+${rest.length}`;
+              metaRow.appendChild(more);
+            }
+          }
         }
         if (Array.isArray(note.tags) && note.tags.length > 0) {
           for (const tag of note.tags) {

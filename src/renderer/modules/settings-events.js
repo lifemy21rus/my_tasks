@@ -8,6 +8,7 @@
       invoke,
       toast,
       confirmDialog,
+      promptDialog,
       closeSettings,
       updateSetting,
       startHotkeyCapture,
@@ -172,8 +173,13 @@
         );
         if (!tag) return;
         if (btn.dataset.action === 'rename-tag') {
-          const name = window.prompt('Новое название тега', tag.name || '');
-          if (!name || name.trim() === tag.name) return;
+          const name = await promptDialog({
+            title: 'Переименовать тег',
+            label: 'Название тега',
+            value: tag.name || '',
+            okText: 'Переименовать'
+          });
+          if (!name || !name.trim() || name.trim() === tag.name) return;
           const res = await invoke(api.updateTag(id, { name: name.trim() }), 'Тег обновлён');
           if (res && ctx.renderTagManageList) ctx.renderTagManageList();
         } else if (btn.dataset.action === 'delete-tag') {

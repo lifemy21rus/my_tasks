@@ -6,6 +6,8 @@
       els,
       state,
       closeConfirm,
+      closePrompt,
+      submitPrompt,
       closeTaskModal,
       closeCategoryModal,
       closeSettings,
@@ -21,9 +23,23 @@
     els.confirmCancel.addEventListener('click', () => closeConfirm(false));
     els.confirmClose.addEventListener('click', () => closeConfirm(false));
 
+    // prompt modal (замена window.prompt, который не работает в Electron)
+    if (els.promptOk) {
+      els.promptOk.addEventListener('click', submitPrompt);
+      els.promptCancel.addEventListener('click', () => closePrompt(null));
+      els.promptClose.addEventListener('click', () => closePrompt(null));
+      els.promptInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          submitPrompt();
+        }
+      });
+    }
+
     els.modalBackdrop.addEventListener('mousedown', (event) => {
       if (event.target !== els.modalBackdrop) return;
-      if (!els.confirmModal.hidden) closeConfirm(false);
+      if (!els.promptModal.hidden) closePrompt(null);
+      else if (!els.confirmModal.hidden) closeConfirm(false);
       else if (!els.taskModal.hidden) closeTaskModal();
       else if (!els.categoryModal.hidden) closeCategoryModal();
       else if (!els.settingsModal.hidden) closeSettings();
@@ -46,7 +62,8 @@
           closeSnoozeMenu();
           return;
         }
-        if (!els.confirmModal.hidden) closeConfirm(false);
+        if (!els.promptModal.hidden) closePrompt(null);
+        else if (!els.confirmModal.hidden) closeConfirm(false);
         else if (!els.taskModal.hidden) closeTaskModal();
         else if (!els.categoryModal.hidden) closeCategoryModal();
         else if (!els.settingsModal.hidden) closeSettings();

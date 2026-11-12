@@ -2,6 +2,9 @@
 
 (function () {
   let confirmResolver = null;
+  let promptResolver = null;
+  let promptAllowEmpty = false;
+  let promptErrorText = 'Введите значение';
 
   function createModalsModule(ctx) {
     const { els, state, api, invoke, toast, U, $$, stopHotkeyCapture } = ctx;
@@ -10,6 +13,18 @@
 
     function showToast(message, type = 'info') {
       toast({ els, state }, message, type);
+    }
+
+    function topModal() {
+      const modals = [
+        els.taskModal,
+        els.categoryModal,
+        els.settingsModal,
+        els.noteModal,
+        els.confirmModal,
+        els.promptModal
+      ];
+      return modals.find((modal) => modal && !modal.hidden) || null;
     }
 
     /* ------------------------------- confirm -------------------------------- */
@@ -61,6 +76,84 @@
         confirmResolver = null;
         resolve(result);
       }
+    }
+
+    /* -------------------------------- prompt ------------------------------- */
+
+    // window.prompt() не поддерживается в Electron, поэтому ввод значения
+    // выполняется собственным модальным окном.
+    function promptDialog({
+      title = 'Введите значение',
+      message = '',
+      label = 'Значение',
+      value = '',
+      placeholder = '',
+      okText = 'Сохранить',
+      errorText = 'Введите значение',
+      allowEmpty = false
+    } = {}) {
+      if (!els.promptModal) return Promise.resolve(null);
+
+      state.promptReturn = topModal();
+      promptAllowEmpty = Boolean(allowEmpty);
+      promptErrorText = errorText || 'Введите значение';
+
+      els.promptTitle.textContent = title;
+      els.promptMessage.textContent = message || '';
+      els.promptMessage.hidden = !message;
+      els.promptLabel.textContent = label;
+      els.promptInput.value = value == null ? '' : String(value);
+      els.promptInput.placeholder = placeholder || '';
+      els.promptError.hidden = true;
+      els.promptOk.textContent = okText;
+
+      els.modalBackdrop.hidden = false;
+      els.promptModal.hidden = false;
+      els.taskModal.hidden = true;
+      els.categoryModal.hidden = true;
+      els.settingsModal.hidden = true;
+      els.noteModal.hidden = true;
+      els.confirmModal.hidden = true;
+
+      return new Promise((resolve) => {
+        promptResolver = resolve;
+        setTimeout(() => {
+          els.promptInput.focus();
+          els.promptInput.select();
+        }, 30);
+      });
+    }
+
+    function closePrompt(result) {
+      if (!els.promptModal) return;
+      els.promptModal.hidden = true;
+      const previous = state.promptReturn;
+      state.promptReturn = null;
+      if (previous && previous !== els.promptModal) {
+        els.modalBackdrop.hidden = false;
+        previous.hidden = false;
+      } else if (topModal()) {
+        els.modalBackdrop.hidden = false;
+      } else {
+        els.modalBackdrop.hidden = true;
+      }
+      if (promptResolver) {
+        const resolve = promptResolver;
+        promptResolver = null;
+        resolve(result);
+      }
+    }
+
+    function submitPrompt() {
+      if (!els.promptModal) return;
+      const raw = els.promptInput.value.trim();
+      if (!raw && !promptAllowEmpty) {
+        els.promptError.textContent = promptErrorText;
+        els.promptError.hidden = false;
+        els.promptInput.focus();
+        return;
+      }
+      closePrompt(raw);
     }
 
     /* ------------------------------ settings -------------------------------- */
@@ -357,6 +450,9 @@
     return {
       confirmDialog,
       closeConfirm,
+      promptDialog,
+      closePrompt,
+      submitPrompt,
       openSettings,
       closeSettings,
       renderSettings,

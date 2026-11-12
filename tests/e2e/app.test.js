@@ -7,7 +7,9 @@ const os = require('os');
 const fs = require('fs');
 
 const APP_ROOT = path.join(__dirname, '..', '..');
-const ELECTRON = require.resolve('electron');
+// require('electron') возвращает путь к исполняемому файлу,
+// require.resolve('electron') — путь к JS-обёртке (запуск падает с EFTYPE).
+const ELECTRON = require('electron');
 
 function envWithTmpData() {
   const env = { ...process.env };
@@ -20,7 +22,10 @@ test('приложение запускается и не падает при с
   test.skip(process.platform !== 'win32', 'E2E тест рассчитан на Windows');
 
   const env = envWithTmpData();
-  const electron = spawn(ELECTRON, [APP_ROOT], {
+  // Отдельная папка профиля, чтобы не конфликтовать с уже запущенным экземпляром
+  // (single instance lock) и не трогать пользовательские данные.
+  const userDataDir = path.join(env.MYTASKS_DATA_DIR, 'userdata');
+  const electron = spawn(ELECTRON, [APP_ROOT, `--user-data-dir=${userDataDir}`], {
     env,
     detached: false,
     stdio: ['ignore', 'pipe', 'pipe']
@@ -29,21 +34,26 @@ test('приложение запускается и не падает при с
   electron.stdout.on('data', () => {});
   electron.stderr.on('data', () => {});
 
+  const smokePath = env.MYTASKS_SMOKE;
+
   try {
-    // Даем процессу время запуститься и создать smoke-отчёт (если переменная задана)
-    await new Promise((resolve) => setTimeout(resolve, 8000));
-
-    // Процесс должен ещё работать (не упал при старте)
-    expect(electron.exitCode).toBeNull();
-
-    const smokePath = env.MYTASKS_SMOKE;
-    if (fs.existsSync(smokePath)) {
-      const report = JSON.parse(fs.readFileSync(smokePath, 'utf8'));
-      expect(report.ok).toBe(true);
-      expect(report.result.addedTask).toBe(true);
-      expect(report.result.addedNote).toBe(true);
-      expect(report.result.settingsValues.themeOptions).toBeGreaterThan(0);
+    // В smoke-режиме приложение само собирает отчёт и закрывается,
+    // поэтому ждём появления отчёта, а не «живого» процесса.
+    const deadline = Date.now() + 40000;
+    while (!fs.existsSync(smokePath) && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
+
+    expect(fs.existsSync(smokePath)).toBe(true);
+
+    const report = JSON.parse(fs.readFileSync(smokePath, 'utf8'));
+    expect(report.ok).toBe(true);
+    expect(report.result.addedTask).toBe(true);
+    expect(report.result.addedNote).toBe(true);
+    expect(report.result.settingsValues.themeOptions).toBeGreaterThan(0);
+    expect(report.result.smartListPromptVisible).toBe(true);
+    expect(report.result.smartListSaved).toBe(true);
+    expect(report.result.smartListRendered).toBe(true);
   } finally {
     try {
       electron.kill('SIGTERM');

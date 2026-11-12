@@ -24,8 +24,11 @@
     draft: null,
     draftSubtaskAddTarget: null,
     categoryDraft: null,
+    noteDraftAttachments: [],
+    notePendingAttachments: [],
     capturingHotkey: false,
     confirmReturn: null,
+    promptReturn: null,
     lastFocusedTask: null,
     priorityFilter: '',
     statusFilter: '',
@@ -215,6 +218,10 @@
         state.tagFilter = tag;
       }
       renderAll();
+    },
+    onOpenAttachment: (id) => {
+      if (!id) return;
+      invoke(api.openAttachment(id));
     }
   });
 
@@ -493,6 +500,8 @@
         })()
       : [];
     const status = els.taskStatusInput ? els.taskStatusInput.value : draft.status || 'todo';
+    const attachments =
+      state.draft && Array.isArray(state.draft.attachments) ? state.draft.attachments.slice() : [];
     const patch = {
       title,
       description: els.taskDescInput.value,
@@ -505,6 +514,7 @@
       actualMinutes: Number(els.taskActualMinutes.value) || undefined,
       categoryId: els.taskCategoryInput.value || null,
       tags,
+      attachments,
       reminders: state.reminderEditor.length > 0 ? [...state.reminderEditor] : null,
       recurrence: buildRecurrenceFromEditor()
     };
@@ -529,6 +539,8 @@
           }));
         const res = await invoke(api.addTask({ ...patch, subtasks }), 'Задача добавлена');
         if (!res) return;
+        // Файлы прикреплены к сохранённой задаче — сбрасываем список «черновых».
+        if (state.draft) state.draft.pendingAttachments = [];
         closeTaskModal();
         return;
       }
@@ -546,6 +558,8 @@
         renderAll();
       }
       toast('Изменения сохранены', 'success');
+      // Файлы прикреплены к сохранённой задаче — сбрасываем список «черновых».
+      if (state.draft) state.draft.pendingAttachments = [];
       closeTaskModal();
     } finally {
       els.taskSaveBtn.disabled = false;
@@ -613,6 +627,18 @@
     return modals.closeConfirm(result);
   }
 
+  function promptDialog(options) {
+    return modals.promptDialog(options);
+  }
+
+  function closePrompt(result) {
+    return modals.closePrompt(result);
+  }
+
+  function submitPrompt() {
+    return modals.submitPrompt();
+  }
+
   /* -------------------------------- actions ------------------------------- */
 
   async function toggleTask(taskId, done) {
@@ -676,6 +702,7 @@
       api,
       invoke,
       confirmDialog,
+      promptDialog,
       setView,
       openCategoryModal,
       openTaskModal,
@@ -731,6 +758,7 @@
       invoke,
       toast,
       confirmDialog,
+      promptDialog,
       closeSettings,
       updateSetting,
       startHotkeyCapture,
@@ -744,6 +772,8 @@
       els,
       state,
       closeConfirm,
+      closePrompt,
+      submitPrompt,
       closeTaskModal,
       closeCategoryModal,
       closeSettings,

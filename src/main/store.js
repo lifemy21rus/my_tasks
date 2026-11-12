@@ -352,11 +352,19 @@ class Store extends EventEmitter {
   }
 
   addTask(input = {}) {
-    return this.tasks.addTask(input);
+    const task = this.tasks.addTask(input);
+    if (this.attachments && Array.isArray(task.attachments)) {
+      this.attachments.link(task.attachments, { taskId: task.id });
+    }
+    return task;
   }
 
   updateTask(id, patch = {}) {
-    return this.tasks.updateTask(id, patch);
+    const task = this.tasks.updateTask(id, patch);
+    if (this.attachments && Array.isArray(task.attachments)) {
+      this.attachments.link(task.attachments, { taskId: task.id });
+    }
+    return task;
   }
 
   deleteTask(id) {
@@ -440,11 +448,19 @@ class Store extends EventEmitter {
   }
 
   addNote(input) {
-    return this.notes.addNote(input);
+    const note = this.notes.addNote(input);
+    if (this.attachments && Array.isArray(note.attachments)) {
+      this.attachments.link(note.attachments, { noteId: note.id });
+    }
+    return note;
   }
 
   updateNote(id, patch = {}) {
-    return this.notes.updateNote(id, patch);
+    const note = this.notes.updateNote(id, patch);
+    if (this.attachments && Array.isArray(note.attachments)) {
+      this.attachments.link(note.attachments, { noteId: note.id });
+    }
+    return note;
   }
 
   toggleNote(id, done) {

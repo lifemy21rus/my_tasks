@@ -542,6 +542,52 @@ test('smart lists: add, update, delete and restore', () => {
   assert.throws(() => store.restoreSmartList(created), /уже существует/);
 });
 
+test('attachments: draft file is linked on save and cleaned up when unused', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mytasks-att-'));
+  const store = new Store(dir, { isPackaged: false });
+
+  const source = path.join(dir, 'источник.txt');
+  fs.writeFileSync(source, 'данные', 'utf8');
+
+  // Файл прикреплён до сохранения задачи — владелец пока не известен.
+  const draft = store.addAttachmentFromPath(source, {});
+  assert.ok(draft && draft.id);
+  assert.equal(draft.taskId, null);
+  assert.equal(store.getAttachments().length, 1);
+
+  const task = store.addTask({ title: 'С файлом', attachments: [draft.id] });
+  const record = store.getAttachments().find((a) => a.id === draft.id);
+  assert.equal(record.taskId, task.id);
+  assert.deepEqual(store.getTasks().find((t) => t.id === task.id).attachments, [draft.id]);
+  assert.ok(fs.existsSync(store.getAttachmentPath(draft.id)));
+
+  // Вложение удаляется из задачи и с диска.
+  const storedPath = store.getAttachmentPath(draft.id);
+  store.deleteAttachment(draft.id);
+  assert.equal(store.getAttachments().length, 0);
+  assert.deepEqual(store.getTasks().find((t) => t.id === task.id).attachments, []);
+  assert.equal(fs.existsSync(storedPath), false);
+});
+
+test('attachments: gc removes records not linked to any task or note', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mytasks-att-gc-'));
+  const store = new Store(dir, { isPackaged: false });
+
+  const source = path.join(dir, 'черновик.txt');
+  fs.writeFileSync(source, 'данные', 'utf8');
+  const orphan = store.addAttachmentFromPath(source, {});
+  const kept = store.addAttachmentFromPath(source, {});
+
+  const task = store.addTask({ title: 'С файлом', attachments: [kept.id] });
+  assert.ok(task.id);
+
+  store.gcAttachments();
+
+  const ids = store.getAttachments().map((a) => a.id);
+  assert.equal(ids.includes(orphan.id), false);
+  assert.equal(ids.includes(kept.id), true);
+});
+
 test('categories: restore recreates deleted category', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mytasks-cat-restore-'));
   const store = new Store(dir, { isPackaged: false });

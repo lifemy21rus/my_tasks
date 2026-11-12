@@ -124,7 +124,9 @@
             ? task.reminders.map((r) => ({ offset: r.offset, type: r.type }))
             : null,
           recurrence: task.recurrence ? { ...task.recurrence } : null,
-          subtasks: (task.subtasks || []).map(mapDraftSubtask)
+          subtasks: (task.subtasks || []).map(mapDraftSubtask),
+          attachments: Array.isArray(task.attachments) ? task.attachments.slice() : [],
+          pendingAttachments: []
         };
         els.taskModalTitle.textContent = 'Редактировать задачу';
         els.taskDeleteBtn.hidden = false;
@@ -150,7 +152,9 @@
           categoryId: preset.categoryId || (state.view === 'category' ? state.categoryId : ''),
           reminders: settings.defaultRemindAtDue !== false ? defaultReminders : null,
           recurrence: null,
-          subtasks: []
+          subtasks: [],
+          attachments: [],
+          pendingAttachments: []
         };
         els.taskModalTitle.textContent = 'Новая задача';
         els.taskDeleteBtn.hidden = true;
@@ -166,7 +170,7 @@
       els.taskActualMinutes.value = state.draft.actualMinutes ?? '';
       if (els.taskTagsInput) els.taskTagsInput.value = (state.draft.tags || []).join(', ');
       renderTaskTagChips();
-      renderTaskAttachments(state.draft.id);
+      renderTaskAttachments();
       loadReminderEditor(state.draft.id ? currentTask(state.draft.id) : state.draft);
       loadRecurrenceEditor(state.draft.id ? currentTask(state.draft.id) : state.draft);
       els.taskTitleError.hidden = true;
@@ -193,22 +197,34 @@
     function closeTaskModal() {
       els.taskModal.hidden = true;
       els.modalBackdrop.hidden = true;
+      discardPendingAttachments();
       state.draft = null;
       state.draftSubtaskAddTarget = null;
     }
 
-    function renderTaskAttachments(taskId) {
+    // Файлы, прикреплённые в текущей сессии редактирования, но не сохранённые,
+    // удаляются из хранилища, чтобы не оставлять «осиротевшие» файлы.
+    function discardPendingAttachments() {
+      const draft = state.draft;
+      if (!draft || !Array.isArray(draft.pendingAttachments)) return;
+      const ids = draft.pendingAttachments.slice();
+      draft.pendingAttachments = [];
+      for (const id of ids) {
+        try {
+          const result = api.deleteAttachment(id);
+          if (result && typeof result.catch === 'function') result.catch(() => {});
+        } catch (_) {}
+      }
+    }
+
+    function renderTaskAttachments() {
       if (!els.taskAttachmentList) return;
       els.taskAttachmentList.textContent = '';
-      const canAttach = Boolean(taskId);
-      if (els.taskAttachmentAddBtn) els.taskAttachmentAddBtn.disabled = !canAttach;
-      if (els.taskAttachmentHint) els.taskAttachmentHint.hidden = canAttach;
-      if (!canAttach) return;
-
-      const task = currentTask(taskId);
-      const all = (state.data && state.data.attachments) || [];
-      const ids = task && Array.isArray(task.attachments) ? task.attachments : [];
-      const items = ids.map((id) => all.find((a) => a.id === id)).filter(Boolean);
+      const draft = state.draft;
+      const ids = draft && Array.isArray(draft.attachments) ? draft.attachments : [];
+      const items = window.AppAttachments.collectAttachments(state, ids);
+      if (els.taskAttachmentAddBtn) els.taskAttachmentAddBtn.disabled = false;
+      if (els.taskAttachmentHint) els.taskAttachmentHint.hidden = true;
       if (items.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'field-hint';
@@ -217,26 +233,7 @@
         return;
       }
       for (const att of items) {
-        const row = document.createElement('div');
-        row.className = 'attachment-row';
-        const name = document.createElement('button');
-        name.type = 'button';
-        name.className = 'attachment-name';
-        name.dataset.action = 'open-attachment';
-        name.dataset.id = att.id;
-        name.textContent = att.name || att.id;
-        name.title = att.name || '';
-        const del = document.createElement('button');
-        del.type = 'button';
-        del.className = 'icon-btn small danger';
-        del.dataset.action = 'delete-attachment';
-        del.dataset.id = att.id;
-        del.title = 'Удалить вложение';
-        del.setAttribute('aria-label', 'Удалить вложение');
-        del.innerHTML =
-          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-        row.append(name, del);
-        els.taskAttachmentList.appendChild(row);
+        els.taskAttachmentList.appendChild(window.AppAttachments.createRow(att));
       }
     }
 
@@ -268,10 +265,22 @@
 
     if (els.taskAttachmentAddBtn) {
       els.taskAttachmentAddBtn.addEventListener('click', async () => {
-        const taskId = state.draft && state.draft.id;
-        if (!taskId) return;
-        const res = await invoke(api.addAttachmentPick({ taskId }), 'Файл прикреплён');
-        if (res) renderTaskAttachments(taskId);
+        const draft = state.draft;
+        if (!draft) return;
+        const taskId = draft.id || null;
+        // Для новой задачи файл сначала копируется в хранилище без привязки
+        // и связывается с задачей при сохранении.
+        const res = await invoke(
+          api.addAttachmentPick(taskId ? { taskId } : {}),
+          'Файл прикреплён'
+        );
+        const attachment = res && res.result;
+        if (!attachment || !attachment.id) return;
+        if (!Array.isArray(draft.attachments)) draft.attachments = [];
+        if (!draft.attachments.includes(attachment.id)) draft.attachments.push(attachment.id);
+        if (!Array.isArray(draft.pendingAttachments)) draft.pendingAttachments = [];
+        draft.pendingAttachments.push(attachment.id);
+        renderTaskAttachments();
       });
     }
 
@@ -285,6 +294,10 @@
           await invoke(api.openAttachment(id));
           return;
         }
+        if (btn.dataset.action === 'reveal-attachment') {
+          await invoke(api.revealAttachment ? api.revealAttachment(id) : Promise.resolve(null));
+          return;
+        }
         if (btn.dataset.action === 'delete-attachment') {
           const confirmed = await ctx.confirmDialog({
             title: 'Удалить вложение?',
@@ -293,7 +306,16 @@
           });
           if (!confirmed) return;
           const res = await invoke(api.deleteAttachment(id), 'Вложение удалено');
-          if (res && state.draft && state.draft.id) renderTaskAttachments(state.draft.id);
+          if (res) {
+            const draft = state.draft;
+            if (draft && Array.isArray(draft.attachments)) {
+              draft.attachments = draft.attachments.filter((item) => item !== id);
+            }
+            if (draft && Array.isArray(draft.pendingAttachments)) {
+              draft.pendingAttachments = draft.pendingAttachments.filter((item) => item !== id);
+            }
+            renderTaskAttachments();
+          }
         }
       });
     }

@@ -72,6 +72,9 @@
     function openNoteModal(noteId = null) {
       const note = noteId ? state.data.notes.find((n) => n.id === noteId) : null;
       state.editingNoteId = note ? note.id : null;
+      state.noteDraftAttachments =
+        note && Array.isArray(note.attachments) ? note.attachments.slice() : [];
+      state.notePendingAttachments = [];
       state.noteColor = note && note.color ? note.color : NOTE_COLORS[0];
 
       els.noteModalTitle.textContent = note ? 'Редактировать заметку' : 'Новая заметка';
@@ -83,7 +86,7 @@
       els.noteTitleError.hidden = true;
       if (els.noteDeleteBtn) els.noteDeleteBtn.hidden = true;
       renderNoteColors();
-      renderNoteAttachments(state.editingNoteId);
+      renderNoteAttachments();
 
       els.modalBackdrop.hidden = false;
       els.noteModal.hidden = false;
@@ -96,6 +99,7 @@
 
     function closeNoteModal() {
       els.noteModal.hidden = true;
+      discardPendingAttachments();
       state.editingNoteId = null;
       if (
         els.taskModal.hidden &&
@@ -104,6 +108,21 @@
         els.confirmModal.hidden
       ) {
         els.modalBackdrop.hidden = true;
+      }
+    }
+
+    // Файлы, прикреплённые в текущей сессии редактирования, но не сохранённые,
+    // удаляются из хранилища, чтобы не оставлять «осиротевшие» файлы.
+    function discardPendingAttachments() {
+      const ids = Array.isArray(state.notePendingAttachments)
+        ? state.notePendingAttachments.slice()
+        : [];
+      state.notePendingAttachments = [];
+      for (const id of ids) {
+        try {
+          const result = api.deleteAttachment(id);
+          if (result && typeof result.catch === 'function') result.catch(() => {});
+        } catch (_) {}
       }
     }
 
@@ -134,7 +153,10 @@
           })()
         : [];
       const isNew = !state.editingNoteId;
-      const payload = { title, content, color: state.noteColor, tags };
+      const attachments = Array.isArray(state.noteDraftAttachments)
+        ? state.noteDraftAttachments.slice()
+        : [];
+      const payload = { title, content, color: state.noteColor, tags, attachments };
 
       els.noteSaveBtn.disabled = true;
       try {
@@ -143,6 +165,8 @@
           : await invoke(api.updateNote(state.editingNoteId, payload), 'Заметка обновлена');
         if (!res) return;
 
+        // Файлы прикреплены к сохранённой заметке — сбрасываем список «черновых».
+        state.notePendingAttachments = [];
         closeNoteModal();
       } finally {
         els.noteSaveBtn.disabled = false;
@@ -175,18 +199,13 @@
       }
     }
 
-    function renderNoteAttachments(noteId) {
+    function renderNoteAttachments() {
       if (!els.noteAttachmentList) return;
       els.noteAttachmentList.textContent = '';
-      const canAttach = Boolean(noteId);
-      if (els.noteAttachmentAddBtn) els.noteAttachmentAddBtn.disabled = !canAttach;
-      if (els.noteAttachmentHint) els.noteAttachmentHint.hidden = canAttach;
-      if (!canAttach) return;
-
-      const note = state.data.notes.find((n) => n.id === noteId);
-      const all = (state.data && state.data.attachments) || [];
-      const ids = note && Array.isArray(note.attachments) ? note.attachments : [];
-      const items = ids.map((id) => all.find((a) => a.id === id)).filter(Boolean);
+      const ids = Array.isArray(state.noteDraftAttachments) ? state.noteDraftAttachments : [];
+      const items = window.AppAttachments.collectAttachments(state, ids);
+      if (els.noteAttachmentAddBtn) els.noteAttachmentAddBtn.disabled = false;
+      if (els.noteAttachmentHint) els.noteAttachmentHint.hidden = true;
       if (items.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'field-hint';
@@ -195,35 +214,28 @@
         return;
       }
       for (const att of items) {
-        const row = document.createElement('div');
-        row.className = 'attachment-row';
-        const name = document.createElement('button');
-        name.type = 'button';
-        name.className = 'attachment-name';
-        name.dataset.action = 'open-attachment';
-        name.dataset.id = att.id;
-        name.textContent = att.name || att.id;
-        name.title = att.name || '';
-        const del = document.createElement('button');
-        del.type = 'button';
-        del.className = 'icon-btn small danger';
-        del.dataset.action = 'delete-attachment';
-        del.dataset.id = att.id;
-        del.title = 'Удалить вложение';
-        del.setAttribute('aria-label', 'Удалить вложение');
-        del.innerHTML =
-          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-        row.append(name, del);
-        els.noteAttachmentList.appendChild(row);
+        els.noteAttachmentList.appendChild(window.AppAttachments.createRow(att));
       }
     }
 
     if (els.noteAttachmentAddBtn) {
       els.noteAttachmentAddBtn.addEventListener('click', async () => {
         const noteId = state.editingNoteId;
-        if (!noteId) return;
-        const res = await invoke(api.addAttachmentPick({ noteId }), 'Файл прикреплён');
-        if (res) renderNoteAttachments(noteId);
+        // Для новой заметки файл сначала копируется в хранилище без привязки
+        // и связывается с заметкой при сохранении.
+        const res = await invoke(
+          api.addAttachmentPick(noteId ? { noteId } : {}),
+          'Файл прикреплён'
+        );
+        const attachment = res && res.result;
+        if (!attachment || !attachment.id) return;
+        if (!Array.isArray(state.noteDraftAttachments)) state.noteDraftAttachments = [];
+        if (!state.noteDraftAttachments.includes(attachment.id)) {
+          state.noteDraftAttachments.push(attachment.id);
+        }
+        if (!Array.isArray(state.notePendingAttachments)) state.notePendingAttachments = [];
+        state.notePendingAttachments.push(attachment.id);
+        renderNoteAttachments();
       });
     }
 
@@ -237,6 +249,10 @@
           await invoke(api.openAttachment(id));
           return;
         }
+        if (btn.dataset.action === 'reveal-attachment') {
+          await invoke(api.revealAttachment ? api.revealAttachment(id) : Promise.resolve(null));
+          return;
+        }
         if (btn.dataset.action === 'delete-attachment') {
           const confirmed = await confirmDialog({
             title: 'Удалить вложение?',
@@ -245,7 +261,17 @@
           });
           if (!confirmed) return;
           const res = await invoke(api.deleteAttachment(id), 'Вложение удалено');
-          if (res && state.editingNoteId) renderNoteAttachments(state.editingNoteId);
+          if (res) {
+            if (Array.isArray(state.noteDraftAttachments)) {
+              state.noteDraftAttachments = state.noteDraftAttachments.filter((item) => item !== id);
+            }
+            if (Array.isArray(state.notePendingAttachments)) {
+              state.notePendingAttachments = state.notePendingAttachments.filter(
+                (item) => item !== id
+              );
+            }
+            renderNoteAttachments();
+          }
         }
       });
     }

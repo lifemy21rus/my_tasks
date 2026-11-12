@@ -52,6 +52,7 @@ contextBridge.exposeInMainWorld('api', {
   getAttachments: () => ipcRenderer.invoke('attachments:get'),
   addAttachmentPick: (options) => ipcRenderer.invoke('attachment:add-pick', options || {}),
   openAttachment: (id) => ipcRenderer.invoke('attachment:open', id),
+  revealAttachment: (id) => ipcRenderer.invoke('attachment:reveal', id),
   deleteAttachment: (id) => ipcRenderer.invoke('attachment:delete', id),
   gcAttachments: () => ipcRenderer.invoke('attachments:gc'),
 

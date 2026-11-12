@@ -428,6 +428,11 @@ function registerIpc(deps) {
     if (error) throw new Error(error);
     return ok();
   });
+  handle('attachment:reveal', async (_event, id) => {
+    const filePath = store.getAttachmentPath(id);
+    shell.showItemInFolder(filePath);
+    return ok();
+  });
   handle('attachment:delete', async (_event, id) => {
     store.deleteAttachment(id);
     return ok();

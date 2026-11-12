@@ -9,6 +9,7 @@
       api,
       invoke,
       confirmDialog,
+      promptDialog,
       setView,
       openCategoryModal,
       openTaskModal,
@@ -173,8 +174,14 @@
       els.saveSmartListBtn.addEventListener('click', async () => {
         if (!ctx.currentCriteria) return;
         const criteria = ctx.currentCriteria();
-        const name = window.prompt('Название списка', 'Новый список');
-        if (!name) return;
+        const name = await promptDialog({
+          title: 'Сохранить список',
+          label: 'Название списка',
+          message: 'Текущие фильтры и вид будут сохранены как список.',
+          value: 'Новый список',
+          okText: 'Сохранить'
+        });
+        if (!name || !name.trim()) return;
         const res = await invoke(
           api.addSmartList({ name: name.trim(), criteria }),
           'Список сохранён'
@@ -204,8 +211,13 @@
           const id = renameBtn.dataset.smartListId;
           const list = (state.data.smartLists || []).find((l) => l.id === id);
           if (!list) return;
-          const name = window.prompt('Новое название списка', list.name || '');
-          if (!name || name.trim() === list.name) return;
+          const name = await promptDialog({
+            title: 'Переименовать список',
+            label: 'Название списка',
+            value: list.name || '',
+            okText: 'Переименовать'
+          });
+          if (!name || !name.trim() || name.trim() === list.name) return;
           await invoke(api.updateSmartList(id, { name: name.trim() }), 'Список переименован');
           return;
         }

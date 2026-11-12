@@ -251,11 +251,22 @@
       }
 
       if (Array.isArray(task.attachments) && task.attachments.length > 0) {
-        const att = document.createElement('span');
-        att.className = 'meta-attachments';
-        att.title = `Вложений: ${task.attachments.length}`;
-        att.textContent = `📎 ${task.attachments.length}`;
-        meta.appendChild(att);
+        const items = window.AppAttachments.collectAttachments(state, task.attachments);
+        if (items.length === 0) {
+          const att = document.createElement('span');
+          att.className = 'meta-attachments';
+          att.title = `Вложений: ${task.attachments.length}`;
+          att.textContent = `📎 ${task.attachments.length}`;
+          meta.appendChild(att);
+        } else {
+          // Каждый файл — отдельная ссылка: открыть можно любой из них.
+          items.forEach((att, index) => {
+            const link = window.AppAttachments.createLink(att, {
+              label: index === 0 ? `📎 ${att.name || att.id}` : att.name || att.id
+            });
+            meta.appendChild(link);
+          });
+        }
       }
 
       if (Array.isArray(task.tags) && task.tags.length > 0) {
@@ -1101,6 +1112,12 @@
               state.calendarMonthOffset = (Number(state.calendarMonthOffset) || 0) + delta;
             }
             renderTaskList();
+            return;
+          }
+          if (action === 'open-attachment') {
+            event.preventDefault();
+            event.stopPropagation();
+            invoke(api.openAttachment(button.dataset.id));
             return;
           }
           if (action === 'filter-tag') {

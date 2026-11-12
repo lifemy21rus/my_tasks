@@ -8,3 +8,5 @@ Thumbs.db
 .tmp_*.md
 .env
 smoke-test.json 
+test-results/
+playwright-report/

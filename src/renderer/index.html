@@ -761,7 +761,7 @@
             </div>
             <div class="attachment-list" id="task-attachment-list"></div>
             <p class="field-hint" id="task-attachment-hint">
-              Сохраните задачу, чтобы прикреплять файлы.
+              Файл можно прикрепить до сохранения — он привяжется к задаче после сохранения.
             </p>
           </div>
 
@@ -829,6 +829,53 @@
           <div class="modal-foot-right">
             <button class="btn btn-ghost" id="confirm-cancel" type="button">Отмена</button>
             <button class="btn btn-danger" id="confirm-ok" type="button">Удалить</button>
+          </div>
+        </footer>
+      </div>
+
+      <div
+        class="modal modal-sm"
+        id="prompt-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="prompt-title"
+        hidden
+      >
+        <header class="modal-head">
+          <h2 id="prompt-title">Введите значение</h2>
+          <button class="icon-btn" id="prompt-close" type="button" aria-label="Закрыть">
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+            >
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </header>
+        <div class="modal-body">
+          <p class="confirm-text" id="prompt-message" hidden></p>
+          <label class="field">
+            <span class="field-label" id="prompt-label">Значение</span>
+            <input
+              type="text"
+              id="prompt-input"
+              class="input input-lg"
+              maxlength="120"
+              placeholder=""
+              autocomplete="off"
+            />
+            <span class="field-error" id="prompt-error" hidden></span>
+          </label>
+        </div>
+        <footer class="modal-foot">
+          <div class="modal-foot-right">
+            <button class="btn btn-ghost" id="prompt-cancel" type="button">Отмена</button>
+            <button class="btn btn-primary" id="prompt-ok" type="button">Сохранить</button>
           </div>
         </footer>
       </div>
@@ -1251,7 +1298,7 @@
             </div>
             <div class="attachment-list" id="note-attachment-list"></div>
             <p class="field-hint" id="note-attachment-hint">
-              Сохраните заметку, чтобы прикреплять файлы.
+              Файл можно прикрепить до сохранения — он привяжется к заметке после сохранения.
             </p>
           </div>
 
@@ -1275,6 +1322,7 @@
     <script src="../shared/utils.js"></script>
     <script src="./modules/dom.js"></script>
     <script src="./modules/state-helpers.js"></script>
+    <script src="./modules/attachments.js"></script>
     <script src="./modules/notes.js"></script>
     <script src="./modules/categories.js"></script>
     <script src="./modules/modals.js"></script>
