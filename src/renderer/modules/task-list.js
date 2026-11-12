@@ -593,6 +593,13 @@
           grid.appendChild(slot);
         }
         container.appendChild(grid);
+        // Прокручиваем дневную сетку к первому часу с задачами.
+        setTimeout(() => {
+          const firstBusy = grid.querySelector('.calendar-day-slot-body:not(:empty)');
+          if (!firstBusy) return;
+          const busySlot = firstBusy.closest('.calendar-day-slot');
+          grid.scrollTop = Math.max(0, busySlot.offsetTop - 48);
+        }, 0);
       } else {
         // month
         const viewDate = new Date(anchor.getFullYear(), anchor.getMonth(), 1);

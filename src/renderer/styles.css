@@ -1623,6 +1623,27 @@ button {
   color: var(--text-muted);
 }
 
+/* Поля даты и времени приводим к общему стилю форм. */
+.input[type='date'],
+.input[type='time'] {
+  min-height: 37px;
+  font-variant-numeric: tabular-nums;
+}
+.input[type='date']::-webkit-datetime-edit,
+.input[type='time']::-webkit-datetime-edit {
+  padding: 0;
+}
+.input[type='date']::-webkit-calendar-picker-indicator,
+.input[type='time']::-webkit-calendar-picker-indicator {
+  opacity: 0.5;
+  cursor: pointer;
+  padding: 0;
+}
+.input[type='date']::-webkit-calendar-picker-indicator:hover,
+.input[type='time']::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.95;
+}
+
 .input-lg {
   font-size: 15px;
   font-weight: 600;
@@ -2686,16 +2707,16 @@ html[data-theme='dark'] .recurrence-badge {
   grid-template-columns: 64px 1fr;
   gap: 8px;
   align-items: start;
-  padding: 4px 0;
+  padding: 2px 0;
   border-bottom: 1px dashed var(--border);
 }
 .calendar-day-slot-label {
   font-size: 12px;
   color: var(--text-muted);
-  padding-top: 4px;
+  padding-top: 3px;
 }
 .calendar-day-slot-body {
-  min-height: 28px;
+  min-height: 22px;
   display: flex;
   flex-direction: column;
   gap: 4px;
